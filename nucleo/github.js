@@ -112,6 +112,17 @@ export class RepoGitHub {
     return new Blob([await r.arrayBuffer()], { type: TIPOS_IMAGEM[rel.split('.').pop()] });
   }
 
+  /**
+   * Imagem EXATA de um pacote de thumbnail (builds/<nome>.png na raiz da branch de dados).
+   * É o arquivo que o proprietário autoriza; o app mostra este, não uma cópia parecida.
+   */
+  async lerImagemDoPacote(caminho) {
+    if (!/^builds\/[a-z0-9-]+\.(png|jpg|jpeg)$/.test(caminho || '')) throw new Error('Pacote sem imagem.');
+    const r = await this.req('GET', `/repos/${this.repo}/contents/${caminho}?ref=${encodeURIComponent(this.branch)}`, null, { aceitar: 'application/vnd.github.raw', bruto: true });
+    if (!r) return null;
+    return new Blob([await r.arrayBuffer()], { type: TIPOS_IMAGEM[caminho.split('.').pop()] });
+  }
+
   /** Grava todas as mudanças de `fn` num único commit. `fn` recebe { ler, gravar }. */
   async transacao(fn, mensagem, tentativas = 5) {
     let ultimo;

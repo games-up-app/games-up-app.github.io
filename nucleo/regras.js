@@ -215,5 +215,11 @@ export function alterarConfig(config, usuario, mudancas) {
     antes.horarioPublicacao = config.horarioPublicacao;
     config.horarioPublicacao = h;
   }
+  if ('diaPublicacao' in mudancas) {
+    // Dia das publicações autorizadas: sábado (padrão) ou domingo.
+    if (!['sabado', 'domingo'].includes(mudancas.diaPublicacao)) throw new ErroRegra(400, 'Dia de publicação deve ser sábado ou domingo.');
+    antes.diaPublicacao = config.diaPublicacao || 'sabado';
+    config.diaPublicacao = mudancas.diaPublicacao;
+  }
   return evento(usuario, 'config.alterar', { tipo: 'config', id: 'config' }, { resultado: { antes, mudancas } });
 }
