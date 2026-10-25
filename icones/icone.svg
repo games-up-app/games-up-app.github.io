@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <path id="silhueta" d="M160 176 H352 C392 176 414 196 424 232 L452 340 C464 388 440 420 404 420 C378 420 362 404 348 380 L330 350 H182 L164 380 C150 404 134 420 108 420 C72 420 48 388 60 340 L88 232 C98 196 120 176 160 176 Z"/>
+    <clipPath id="corpo"><use href="#silhueta"/></clipPath>
+  </defs>
+  <rect width="512" height="512" fill="#ffffff"/>
+  <g transform="rotate(-12 256 256) translate(0 -42)">
+    <g clip-path="url(#corpo)">
+      <rect width="512" height="512" fill="#1b1b1a"/>
+      <!-- manchas roxas recortadas nas pontas, como na logo -->
+      <g fill="#6700bf">
+        <!-- canto superior esquerdo -->
+        <circle cx="96" cy="190" r="39"/><circle cx="128" cy="168" r="26"/><circle cx="78" cy="226" r="23"/>
+        <!-- alça esquerda (embaixo) -->
+        <circle cx="84" cy="420" r="44"/><circle cx="120" cy="436" r="29"/><circle cx="56" cy="384" r="21"/>
+        <!-- canto superior direito -->
+        <circle cx="414" cy="192" r="29"/><circle cx="430" cy="226" r="18"/>
+        <!-- alça direita (embaixo) -->
+        <circle cx="436" cy="402" r="39"/><circle cx="402" cy="428" r="29"/><circle cx="462" cy="366" r="23"/>
+        <circle cx="206" cy="170" r="16"/>
+        <!-- borda de baixo, no meio -->
+        <circle cx="256" cy="362" r="23"/><circle cx="232" cy="358" r="13"/>
+      </g>
+    </g>
+    <!-- direcional: braço de cima é a seta "UP" amarela -->
+    <g fill="#fdd001">
+      <path d="M150 190 L182 228 Q184 232 179 232 L164 232 L164 304 Q164 310 158 310 L142 310 Q136 310 136 304 L136 232 L121 232 Q116 232 118 228 Z"/>
+      <rect x="108" y="248" width="84" height="30" rx="7"/>
+    </g>
+    <g fill="#fdd001">
+      <circle cx="362" cy="226" r="16"/>
+      <circle cx="396" cy="260" r="16"/>
+      <circle cx="328" cy="260" r="16"/>
+      <circle cx="362" cy="294" r="16"/>
+    </g>
+    <rect x="220" y="242" width="30" height="11" rx="5.5" fill="#ffffff"/>
+    <rect x="262" y="242" width="30" height="11" rx="5.5" fill="#ffffff"/>
+  </g>
+</svg>

@@ -1,2 +1,4 @@
-# games-up-app.github.io
-Games Up — app da Central da Escola Brasileira (só o visual; dados em repositório privado).
+# Games Up
+
+App da Central da Escola Brasileira. Este repositório tem só o visual.
+Os dados ficam no repositório privado `0SrGood/Automatizar-Escola-Brasileira`.
