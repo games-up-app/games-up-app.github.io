@@ -1,6 +1,7 @@
 // Guarda no aparelho (IndexedDB) o token do GitHub e a chave de autorização.
 // A chave de autorização é NÃO exportável: o navegador usa, mas ninguém consegue copiá-la.
 import { gerarChaveDispositivo, assinarObjeto } from './assinatura.js';
+import { criarPedidoCadastro, validarPedidoCadastro, impressaoDigitalDaChave, codigoDaImpressaoDigital, lerRegistroDeAparelhos } from './cadastro-aparelho.js';
 
 const BANCO = 'central-eb';
 const LOJA = 'aparelho';
@@ -34,25 +35,60 @@ export async function lerToken() { return (await lerItem('token')) || null; }
 export async function gravarToken(t) { await gravarItem('token', t); }
 export async function esquecerToken() { await apagarItem('token'); }
 
-/** { privada: CryptoKey, publicaPem, criadaEm } ou null */
+/** A leitura local não confirma confiança; confira com atualizarCadastroDoAparelho. */
 export async function chaveDoAparelho() { return (await lerItem('chave-autorizacao')) || null; }
 
 /**
- * Cria a chave deste aparelho e registra a parte PÚBLICA na variável
- * APPROVAL_SIGNING_PUBLIC_KEYS do repositório (o workflow de publicação confere por ela).
+ * Guarda a privada antes de qualquer rede e envia somente um pedido assinado.
+ * A publicação da chave confiável exige conferência humana pelo PC.
  */
-export async function criarChaveDoAparelho(repo) {
-  const { privada, publicaPem } = await gerarChaveDispositivo();
-  const atuais = (await repo.lerVariavel('APPROVAL_SIGNING_PUBLIC_KEYS')) || '';
-  const todas = `${atuais.trim()}\n${publicaPem}`.trim() + '\n';
-  if (todas.length > 40_000) throw new Error('Muitas chaves registradas. Apague as antigas na variável APPROVAL_SIGNING_PUBLIC_KEYS.');
-  await repo.gravarVariavel('APPROVAL_SIGNING_PUBLIC_KEYS', todas);
-  const item = { privada, publicaPem, criadaEm: new Date().toISOString() };
+export async function criarChaveDoAparelho(repo, { usuarioId, fetchImpl } = {}) {
+  if (typeof usuarioId !== 'string' || !usuarioId) throw new Error('Entre no Games Up antes de cadastrar este aparelho.');
+  let item = await chaveDoAparelho();
+  if (!item) {
+    const par = await gerarChaveDispositivo();
+    item = { ...par, criadaEm: new Date().toISOString(), estado: 'pendente' };
+    await gravarItem('chave-autorizacao', item);
+  }
+  if (item.usuarioId && item.usuarioId.toLowerCase() !== usuarioId.toLowerCase()) throw new Error('Esta chave pertence a outro usuário neste aparelho.');
+  item.usuarioId = usuarioId;
+  item.impressaoDigital = await impressaoDigitalDaChave(item.publicaPem);
+  item.codigo = codigoDaImpressaoDigital(item.impressaoDigital);
+  item.estado = 'pendente';
+  await gravarItem('chave-autorizacao', item);
+  item = await atualizarCadastroDoAparelho({ fetchImpl });
+  if (item.estado === 'registrada') return item;
+
+  // Tentativas repetidas conservam chave, ID, nonce e prova de posse locais.
+  if (!(await validarPedidoCadastro(item.pedido, usuarioId)).ok) item.pedido = await criarPedidoCadastro({ privada: item.privada, publicaPem: item.publicaPem, usuarioId });
+  item.pedidoId = item.pedido.id;
+  item.codigo = codigoDaImpressaoDigital(item.impressaoDigital);
+  await gravarItem('chave-autorizacao', item);
+  await repo.transacao(async tx => {
+    const lista = (await tx.ler('aparelhos/pendentes.json')) || { itens: [] };
+    if (!Array.isArray(lista.itens)) throw new Error('Lista de aparelhos pendentes inválida.');
+    const restantes = lista.itens.filter(p => !(p.impressaoDigital === item.impressaoDigital && String(p.usuarioId).toLowerCase() === usuarioId.toLowerCase()));
+    if (restantes.length >= 20) throw new Error('Há 20 aparelhos pendentes. Confira os pedidos no PC antes de adicionar outro.');
+    tx.gravar('aparelhos/pendentes.json', { itens: [...restantes, item.pedido] });
+  }, 'painel: pedido de cadastro de aparelho');
+  return item;
+}
+
+export async function atualizarCadastroDoAparelho({ fetchImpl } = {}) {
+  const item = await chaveDoAparelho();
+  if (!item) return null;
+  item.impressaoDigital = await impressaoDigitalDaChave(item.publicaPem);
+  item.codigo = codigoDaImpressaoDigital(item.impressaoDigital);
+  item.estado = 'pendente';
+  await gravarItem('chave-autorizacao', item);
+  const registro = await lerRegistroDeAparelhos({ fetchImpl });
+  item.estado = registro.impressoesDigitais.includes(item.impressaoDigital) ? 'registrada' : 'pendente';
   await gravarItem('chave-autorizacao', item);
   return item;
 }
 
-export async function assinadorDoAparelho() {
-  const c = await chaveDoAparelho();
-  return c ? dados => assinarObjeto(c.privada, dados) : null;
+export async function assinadorDoAparelho(opcoes) {
+  let c;
+  try { c = await atualizarCadastroDoAparelho(opcoes); } catch { return null; }
+  return c?.estado === 'registrada' ? dados => assinarObjeto(c.privada, dados) : null;
 }

@@ -5,13 +5,13 @@
 import { CONFIG } from './config.js';
 import { RepoGitHub } from './nucleo/github.js';
 import { criarApi } from './nucleo/api.js';
-import { lerToken, gravarToken, esquecerToken, chaveDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js';
+import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js';
 import { chavePublicaVapid } from './nucleo/vapid.js';
 import { ativarNoAparelho, notificacoesAtivas } from './nucleo/notificacoes.js';
 import { classificarThumbnail, thumbnailsProtegidas } from './nucleo/estatistica.js';
 
 const estado = { usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null };
-const LINK_TOKEN = 'https://github.com/settings/personal-access-tokens/new?name=Games%20Up&description=Painel%20da%20Escola%20Brasileira&expires_in=366&contents=write&variables=write';
+const LINK_TOKEN = 'https://github.com/settings/personal-access-tokens/new?name=Games%20Up&description=Painel%20da%20Escola%20Brasileira&expires_in=366&contents=write';
 // Quatro destinos principais. Consultas e configurações ficam em Mais.
 const ABAS = [
   ['inicio', 'Início'], ['decisoes', 'Decisões'], ['tarefas', 'Tarefas'],
@@ -180,7 +180,7 @@ async function entrar(token) {
   const eu = await repo.usuario();
   await repo.conferirAcesso();
   estado.repo = repo;
-  estado.chave = await chaveDoAparelho().catch(() => null);
+  estado.chave = await atualizarCadastroDoAparelho().catch(() => null);
   estado.cliente = criarApi({ store: repo, usuario: { id: eu.login, nome: eu.nome }, assinar: await assinadorDoAparelho().catch(() => null) });
   estado.usuario = estado.cliente.usuario;
 }
@@ -444,8 +444,8 @@ function cartaoLancamento(l) {
       h('dt', {}, 'Sua autorização'), h('dd', {}, l.autorizacao ? `Assinada por ${l.autorizacao.dados.por} em ${dataBR(l.autorizacao.dados.em)}; vale até ${dataBR(l.autorizacao.dados.expiraEm)}` : 'Ainda não'),
       h('dt', {}, 'Código do pacote (SHA-256)'), h('dd', { class: 'hash' }, l.artefato?.sha256 || '—')),
   ];
-  if (l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL' && !estado.chave) {
-    blocos.push(h('div', { class: 'alerta warn' }, h('strong', {}, 'Falta a chave deste aparelho.'), h('span', {}, 'Crie a chave em Mais → Ajustes → Chave de autorização.')));
+  if (l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL' && estado.chave?.estado !== 'registrada') {
+    blocos.push(h('div', { class: 'alerta warn' }, h('strong', {}, 'Confirme este aparelho primeiro.'), h('span', {}, 'Abra Mais → Ajustes → Chave de autorização.')));
   } else if (l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL') {
     const conf = h('input', { type: 'text', placeholder: '8 primeiros caracteres do código', 'aria-label': 'Confirmação do código do pacote', autocomplete: 'off' });
     const coment = h('textarea', { placeholder: 'Opcional. Obrigatório se for devolver.', maxlength: 2000, 'aria-label': 'Comentário' });
@@ -743,19 +743,46 @@ function config() {
       h('dl', { class: 'campos' }, Object.entries(c.custos || {}).map(([k, v]) => [h('dt', {}, k), h('dd', {}, typeof v === 'boolean' ? (v ? 'Sim' : 'Não') : v)]))));
 }
 
+async function conferirCadastro() {
+  estado.chave = await atualizarCadastroDoAparelho();
+  estado.cliente = criarApi({ store: estado.repo, usuario: { id: estado.usuario.id, nome: estado.usuario.nome }, assinar: await assinadorDoAparelho() });
+  return estado.chave?.estado === 'registrada';
+}
+
 function blocoChave() {
-  if (estado.chave) {
+  if (estado.chave?.estado === 'registrada') {
     return h('section', { class: 'cartao' }, titulo('chave', 'Chave de autorização'),
       h('p', { class: 'ok-linha' }, icone('check'), 'Este aparelho pode autorizar publicações.'),
       h('details', {}, h('summary', {}, 'Sobre esta chave'),
         h('p', { class: 'sinc' }, `Criada em ${dataBR(estado.chave.criadaEm)}. Ela fica só neste aparelho. Se trocar de celular ou limpar o navegador, crie outra.`)));
   }
+  if (estado.chave) {
+    const codigo = h('input', { type: 'text', readonly: true, value: estado.chave.codigo || '', 'aria-label': 'Código do aparelho', autocomplete: 'off', spellcheck: 'false' });
+    const copiar = h('button', { class: 'btn primario', onclick: async () => {
+      try { await navigator.clipboard.writeText(codigo.value); avisar('Código copiado. Envie nesta conversa com o Codex.'); }
+      catch { codigo.focus(); codigo.select(); avisar('Selecione e copie o código deste aparelho.'); }
+    } }, 'Copiar código');
+    const verificar = h('button', { class: 'btn', onclick: async () => {
+      verificar.disabled = true;
+      try { const pronto = await conferirCadastro(); avisar(pronto ? 'Aparelho confirmado. Você já pode autorizar publicações.' : 'Aguardando a confirmação do código pelo Codex.'); render(); }
+      catch (e) { avisar(e.message, true); verificar.disabled = false; }
+    } }, 'Verificar confirmação');
+    const reenviar = h('button', { class: 'btn', onclick: async () => {
+      reenviar.disabled = true;
+      try { estado.chave = await criarChaveDoAparelho(estado.repo, { usuarioId: estado.usuario.id }); avisar('Pedido enviado. O código deste aparelho continua igual.'); render(); }
+      catch (e) { avisar(e.message, true); reenviar.disabled = false; }
+    } }, 'Reenviar pedido');
+    return h('section', { class: 'cartao destaque' }, titulo('chave', 'Confirme este aparelho'),
+      h('p', {}, 'Envie este código na conversa com o Codex. Depois, toque em Verificar confirmação.'),
+      codigo, h('div', { class: 'acoes' }, copiar, verificar),
+      h('details', {}, h('summary', {}, 'Se o pedido não foi enviado'), h('div', { class: 'acoes' }, reenviar)));
+  }
   const b = h('button', { class: 'btn primario', onclick: async () => {
     b.disabled = true; b.textContent = 'Criando…';
     try {
-      estado.chave = await criarChaveDoAparelho(estado.repo);
+      estado.chave = await criarChaveDoAparelho(estado.repo, { usuarioId: estado.usuario.id });
       estado.cliente = criarApi({ store: estado.repo, usuario: { id: estado.usuario.id, nome: estado.usuario.nome }, assinar: await assinadorDoAparelho() });
-      avisar('Chave criada. Este aparelho já pode autorizar publicações.');
+      avisar(estado.chave.estado === 'registrada' ? 'Aparelho confirmado.' : 'Chave criada. Envie o código para confirmar este aparelho.');
       render();
     } catch (e) { avisar(`Não criada: ${e.message}`, true); b.disabled = false; b.textContent = 'Criar chave neste aparelho'; }
   } }, 'Criar chave neste aparelho');
@@ -801,7 +828,7 @@ function inicio() {
       h('div', { class: 'linha-titulo' }, h('h2', {}, 'Últimos 7 dias'), h('button', { class: 'link-botao', onclick: () => irPara('numeros') }, 'Ver números', icone('seta'))),
       h('div', { class: 'grade grade-3' }, kpi('Impressões', num(ind.impressoes)), kpi('Taxa de entrada', pct(ind.qptr)), kpi('Tempo médio', ind2(ind.tempoMedioSessaoMin))),
       h('p', { class: 'sinc periodo-resumo' }, `Leitura do Roblox: ${dataBR(d.meta?.ultimaSincronizacao)}`)),
-    (!estado.chave || estado.pushAtivo === false) ? h('button', { class: 'preparar-aparelho', onclick: () => irPara('ajustes') }, icone('celular'),
+    (estado.chave?.estado !== 'registrada' || estado.pushAtivo === false) ? h('button', { class: 'preparar-aparelho', onclick: () => irPara('ajustes') }, icone('celular'),
       h('span', { class: 'pedido-texto' }, h('strong', {}, 'Preparar este aparelho'), h('span', { class: 'sinc' }, 'Notificações e autorização de publicações')), icone('seta')) : null,
     avisos.length ? h('details', { class: 'avisos-inicio' }, h('summary', {}, `Avisos de configuração (${avisos.length})`), h('ul', { class: 'lista-avisos' }, avisos.map(a => h('li', {}, a)))) : null);
 }

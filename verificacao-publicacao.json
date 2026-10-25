@@ -1,7 +1,8 @@
 {
-  "revisao": "d5f4686b1dee4f145feac25c64e3b1dabb863b7e",
+  "revisao": "f939fcaa9735c8b17fdc54a347255956e009c01a",
   "arquivos": {
-    "app.js": "6ab7fe036657cba0783f62bff6b124dcf322c30627a3a3034fd18d52322c1803",
+    "aparelhos-autorizados.json": "40676c6d8ef04fcb4bbecfb2acf40ef30c5243b4478e8290615045d80931d92a",
+    "app.js": "3c0f5608a97a6292446544c230cef69e1cfd675d3ba44c43bd50bc765fb0a87f",
     "config.js": "bac56d26b0b57fcde0bf47ca20930db602dde92cc866ab37a557510144167181",
     "icones/icone-180.png": "a7f58c25f748e26a2a6c850120c1d55055982f478d45d3c38ab7f3b68614b00a",
     "icones/icone-192.png": "9c0a2f1ca1c2be0ac5b3bd74df96c9d07df688384c3b5e566f5e5f1f8874d99d",
@@ -14,9 +15,10 @@
     "marca/jogo.png": "d2c978ac84f77edd6c44fdb7a24ae57f459d533cb865aeb1bae066e85dd474e1",
     "marca/logo-claro.png": "3ac0a0530f055795d3a95d38425444d1bc38e6460588bf15ab34aa8fd99b4219",
     "marca/logo-escuro.png": "4b1b4a201b40ec479d79e23d36ffc8892e7ff2c446814db3c6c6ba570bd424d8",
-    "nucleo/aparelho.js": "4ed79fb2f51024cc357d739e456d93690b5dc1cf6b081ad4167c492553c10b6c",
+    "nucleo/aparelho.js": "da71eb906c39561bc2e798cde62cd46478729128971de218ac2ae7ff4d1f47aa",
     "nucleo/api.js": "be2bfe55f71ef51b190d8c1e7f8c36b6a5a262876431c2002116f2a560a87532",
     "nucleo/assinatura.js": "36d63fd3c6cbcb6d8916a9ab917780490157d00da53c0803faa40841b557538b",
+    "nucleo/cadastro-aparelho.js": "92210d53d9a8e9273f3027e4b4a140b4fb93d2b087f08c6f6a1090255f77eb4c",
     "nucleo/canonico.js": "5af3043b4857d67c779bb1ac194e84f58c44aa97c830f147f4aec01e2331684f",
     "nucleo/estatistica.js": "6b3d70ce737bb11dd64c12baab2ca619aef4725b0ef232c8468d8b2776f1fd7d",
     "nucleo/github.js": "889f272cf505f9fc3f039ece9f1efa106a44bb0b6726838241b94ef401cf9fa0",
