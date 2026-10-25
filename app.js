@@ -10,7 +10,7 @@ import { criarApi } from './nucleo/api.js';
 import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js';
 import { chavePublicaVapid } from './nucleo/vapid.js';
 import { ativarNoAparelho, notificacoesAtivas } from './nucleo/notificacoes.js';
-import { h, icone, abrirFolha, fecharTudo } from './ui/componentes.js';
+import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js';
 import { ctx } from './ui/contexto.js';
 import { telaInicio } from './telas/inicio.js';
 import { telaDecisoes } from './telas/decisoes.js';
@@ -166,13 +166,44 @@ async function entrar(token) {
 }
 
 async function carregar() {
+  const sha = await shaDados();
   const p = await api('/api/painel');
+  if (sha) ultimoSha = sha;
   estado.usuario = p.usuario; estado.dados = p.dados;
   estado.pushAtivo = null;
   render();
   await conferirNotificacoes();
   render();
 }
+
+// Atualização automática com o app ABERTO: a cada 30 s confere se a branch de dados mudou (1 pedido leve)
+// e só então relê tudo. Se houver folha/janela aberta ou o dono estiver digitando, espera fechar.
+let ultimoSha = null, atualizacaoPendente = false, atualizando = false;
+async function shaDados() {
+  const r = estado.repo;
+  if (!r?.req) return null;
+  try { return (await r.req('GET', `/repos/${r.repo}/git/ref/heads/${encodeURIComponent(r.branch)}`))?.object?.sha || null; } catch { return null; }
+}
+async function atualizarSozinho() {
+  if (atualizando || document.hidden || !estado.dados) return;
+  atualizando = true;
+  try {
+    const sha = await shaDados();
+    if (sha && ultimoSha && sha !== ultimoSha) atualizacaoPendente = true;
+    if (sha) ultimoSha = sha;
+    if (!atualizacaoPendente) return;
+    if (temCamadaAberta() || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+    const p = await api('/api/painel');
+    estado.usuario = p.usuario; estado.dados = p.dados;
+    const y = window.scrollY;
+    render();
+    window.scrollTo(0, y);
+    atualizacaoPendente = false;
+  } catch { /* sem rede: tenta de novo na próxima volta */ } finally { atualizando = false; }
+}
+setInterval(atualizarSozinho, 30_000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) atualizarSozinho(); });
+window.addEventListener('focus', () => atualizarSozinho());
 
 function telaLogin(msg) {
   const campo = h('input', { type: 'password', id: 'token', autocomplete: 'off', spellcheck: 'false', placeholder: 'github_pat_…', 'aria-label': 'Token do GitHub' });

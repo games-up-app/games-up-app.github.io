@@ -1,7 +1,7 @@
 // "API" do painel rodando no próprio navegador.
 // Mantém as mesmas rotas da versão com servidor, mas lê e grava direto no repositório
 // privado (RepoGitHub) com o token do proprietário. Quem tem o token é o proprietário.
-import { ErroRegra, STATUS, decidirProposta, comentar, atualizarTarefa, decidirLancamento, alterarConfig } from './regras.js';
+import { ErroRegra, STATUS, decidirProposta, fazerHoje, comentar, atualizarTarefa, decidirLancamento, alterarConfig } from './regras.js';
 import { validarIdeia } from './ideias.js';
 
 const ARQUIVOS = ['meta', 'metricas', 'ideias', 'andamento', 'analytics', 'jogo', 'concorrentes', 'noticias', 'thumbnails', 'propostas', 'tarefas', 'tendencias', 'discord', 'lancamentos', 'comentarios', 'config', 'saude-agendamentos', 'relatorios/indice', 'executor', 'push/inscricoes'];
@@ -107,6 +107,18 @@ export function criarApi({ store, usuario, assinar = null, papel = 'proprietario
         await auditar(tx, ev);
         return { proposta: propostas.propostas.find(p => p.id === c.propostaId), evento: ev };
       }, `painel: ${c.acao} ${c.propostaId} (proprietário)`);
+      return { ok: true, ...r };
+    },
+
+    'POST /api/propostas/fazer-hoje': async corpo => {
+      const c = texto(corpo);
+      const r = await store.transacao(async tx => {
+        const propostas = await tx.ler('propostas.json');
+        const ev = fazerHoje(propostas, eu, c);
+        tx.gravar('propostas.json', propostas);
+        await auditar(tx, ev);
+        return { proposta: propostas.propostas.find(p => p.id === c.propostaId), evento: ev };
+      }, `painel: ${c.desfazer ? 'desfazer fazer hoje' : 'fazer hoje'} ${c.propostaId} (proprietário)`);
       return { ok: true, ...r };
     },
 

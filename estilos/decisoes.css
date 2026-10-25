@@ -282,3 +282,6 @@
 
 /* ---------- ideia do dono ainda sendo preparada ---------- */
 .dc-card-ideia { border-style: dashed; border-color: color-mix(in srgb, var(--brand) 55%, var(--border)); }
+.dc-resumo-botao { width: 100%; font: inherit; text-align: left; cursor: pointer; border-top: 0; border-right: 0; border-bottom: 0; }
+.dc-resumo-botao:focus-visible { outline: 3px solid var(--brand-text); outline-offset: 2px; }
+.dc-resumo-botao .dc-info-mais { margin-top: 6px; }

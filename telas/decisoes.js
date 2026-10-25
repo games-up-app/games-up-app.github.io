@@ -168,6 +168,7 @@ function chipCategoria(p) {
 
 function primeiraPrevia(p) { return (p.previas || []).find(ehImagem) || null; }
 function rotuloImagem(p, caminho) {
+  if (/previas\/capas\//.test(caminho || '')) return { texto: 'Capa sugerida — evento da Roblox e aviso do grupo', icone: 'evento', tom: 'quente' };
   const ehThumb = p.tipo === 'thumbnail' || /previas\/thumbnails\//.test(caminho || '');
   return ehThumb
     ? { texto: 'Thumbnail candidata — vitrine do Roblox', icone: 'thumbnail', tom: 'relevante' }
@@ -241,12 +242,30 @@ function cardProposta(p) {
   return h('button', { type: 'button', class: `dc-card-proposta${decidivel ? ' pede-voce' : ''}`, onclick: () => abrirProposta(p.id), 'aria-label': `Abrir proposta ${p.id}: ${p.titulo}` },
     miniaturaProposta(p),
     h('div', { class: 'dc-card-corpo' },
-      h('div', { class: 'dc-card-chips' }, seloStatus(p.status), chip(p.id, { iconeNome: iconeDoTipo(p.tipo) }), p.ideiaId ? chip('Sua ideia', { tom: 'relevante', iconeNome: 'lampada' }) : null, chipCategoria(p), p.mudaDesign ? chip('Muda o visual', { tom: 'quente', iconeNome: 'pincel' }) : null),
+      h('div', { class: 'dc-card-chips' }, seloStatus(p.status), chip(p.id, { iconeNome: iconeDoTipo(p.tipo) }), p.ideiaId ? chip('Sua ideia', { tom: 'relevante', iconeNome: 'lampada' }) : null, ehHoje(p) ? chip(`Hoje ${p.fazerHoje.horario}`, { tom: 'quente', iconeNome: 'raio' }) : null, chipCategoria(p), p.mudaDesign ? chip('Muda o visual', { tom: 'quente', iconeNome: 'pincel' }) : null),
       h('h3', { class: 'dc-card-titulo' }, p.titulo),
       h('p', { class: 'dc-card-resumo' }, curto(p.resumo || p.descricao, 110)),
       h('div', { class: 'dc-card-pe' },
         p.semanaAlvo ? h('span', { class: 'dc-pe-data' }, icone('calendario', { tamanho: 16 }), `Previsto ${dataCurta(p.semanaAlvo)}`) : h('span'),
         h('span', { class: 'dc-pe-abrir' }, decidivel && ehDono() ? 'Decidir' : 'Ver', icone('direita', { tamanho: 18 })))));
+}
+
+/** Resumo roxo da proposta: se for longo, um toque mostra o texto inteiro (e outro volta). */
+function resumoDestaque(texto) {
+  const t = String(texto || '').trim();
+  const LIMITE = 260;
+  if (t.length <= LIMITE) return h('div', { class: 'dc-resumo-destaque' }, icone('lampada', { tamanho: 22 }), h('p', {}, t));
+  const par = h('p', {}, curto(t, LIMITE));
+  const mais = h('span', { class: 'dc-info-mais' }, 'Ler tudo', icone('direita', { tamanho: 14 }));
+  const caixa = h('button', { type: 'button', class: 'dc-resumo-destaque dc-resumo-botao', 'aria-expanded': 'false' },
+    icone('lampada', { tamanho: 22 }), h('div', {}, par, mais));
+  caixa.addEventListener('click', () => {
+    const aberto = caixa.getAttribute('aria-expanded') === 'true';
+    par.textContent = aberto ? curto(t, LIMITE) : t;
+    mais.replaceChildren(aberto ? 'Ler tudo' : 'Mostrar menos', icone('direita', { tamanho: 14 }));
+    caixa.setAttribute('aria-expanded', String(!aberto));
+  });
+  return caixa;
 }
 
 /** Ideia que o dono mandou pelo celular e a equipe ainda está transformando em proposta. */
@@ -306,7 +325,7 @@ function abrirProposta(id) {
           p.semanaAlvo ? chip(`Previsto ${dataCurta(p.semanaAlvo)}`, { iconeNome: 'calendario' }) : null),
         h('h2', { class: 'dc-detalhe-titulo' }, p.titulo),
         p.bloqueio ? h('div', { class: 'dc-alerta warn' }, icone('alerta', { tamanho: 20 }), h('div', {}, h('strong', {}, 'Ainda não dá para decidir. '), p.bloqueio)) : null,
-        h('div', { class: 'dc-resumo-destaque' }, icone('lampada', { tamanho: 22 }), h('p', {}, curto(p.resumo || p.descricao, 260))),
+        resumoDestaque(p.resumo || p.descricao),
         h('div', { class: 'dc-grade-info' },
           cardInfo('alvo', 'Por quê', p.motivacao),
           cardInfo('jogadores', 'Para o jogador', p.beneficio, 'positivo'),
@@ -319,13 +338,63 @@ function abrirProposta(id) {
     },
     rodape: podeDecidir ? fechar => {
       const aprovar = botaoDc('Aprovar ideia', { classe: 'dc-btn-roxo dc-btn-grande', iconeNome: 'ok', onclick: () => confirmarDecisao(p, 'aprovar', fechar) });
-      return h('div', { class: 'dc-rodape-decisao' }, aprovar,
+      const hoje = p.tipo === 'thumbnail' ? null : botaoDc('Aprovar e fazer hoje', { classe: 'dc-btn-amarelo dc-btn-grande', iconeNome: 'raio', onclick: () => folhaFazerHoje(p, { aprovarAntes: true, fecharModal: fechar }) });
+      return h('div', { class: 'dc-rodape-decisao' }, aprovar, hoje,
         h('div', { class: 'dc-rodape-linha' },
           botaoDc('Pedir alterações', { classe: 'dc-btn-claro', iconeNome: 'editar', onclick: () => confirmarDecisao(p, 'pedir_alteracoes', fechar) }),
           botaoDc('Adiar', { classe: 'dc-btn-claro', iconeNome: 'relogio', onclick: () => confirmarDecisao(p, 'adiar', fechar) }),
           botaoDc('Rejeitar', { classe: 'dc-btn-perigo', iconeNome: 'fechar', onclick: () => confirmarDecisao(p, 'rejeitar', fechar) })));
+    } : podeAdiantar(p) ? fechar => {
+      if (ehHoje(p)) {
+        return h('div', { class: 'dc-rodape-decisao' },
+          h('div', { class: 'dc-alerta' }, icone('raio', { tamanho: 20 }), h('div', {}, h('strong', {}, `Marcada para hoje, meta ${p.fazerHoje.horario}. `), 'A equipe faz esta primeiro; você autoriza o pacote e ele vai para o jogo na hora.')),
+          botaoDc('Voltar para a data normal', { classe: 'dc-btn-claro', iconeNome: 'calendario', onclick: () => desfazerHoje(p, fechar) }));
+      }
+      return h('div', { class: 'dc-rodape-decisao' }, botaoDc('Fazer hoje', { classe: 'dc-btn-amarelo dc-btn-grande', iconeNome: 'raio', onclick: () => folhaFazerHoje(p, { fecharModal: fechar }) }));
     } : null,
   });
+}
+
+// ------------------------------------------------------------------ "Fazer hoje" (adiantar a atualização)
+const hojeBR = () => new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
+const ehHoje = p => p.fazerHoje?.data === hojeBR();
+const podeAdiantar = p => ehDono() && p.tipo !== 'thumbnail' && [ST.APROVADA_DEV, ST.EM_DEV, ST.EM_TESTES].includes(p.status)
+  && (p.decisoes || []).some(d => d.acao === 'aprovar' && d.versao === p.versao);
+
+function folhaFazerHoje(p, { aprovarAntes = false, fecharModal } = {}) {
+  abrirFolha({
+    titulo: aprovarAntes ? 'Aprovar e fazer hoje?' : 'Fazer hoje?',
+    conteudo: fechar => {
+      const agora = new Date(Date.now() - 3 * 3600_000);
+      const sugestao = `${String(Math.min(23, agora.getUTCHours() + 3)).padStart(2, '0')}:00`;
+      const hora = h('input', { type: 'time', class: 'campo-hora', value: sugestao, step: 300, id: `dc-hoje-${p.id}`, 'aria-label': 'Meta de horário para hoje (Brasília)' });
+      const erro = h('p', { class: 'dc-erro', role: 'alert', hidden: true }, 'Escolha um horário.');
+      const voltar = botaoDc('Voltar', { classe: 'dc-btn-claro', onclick: fechar });
+      const ok = botaoDc(aprovarAntes ? 'Sim, aprovar e fazer hoje' : 'Sim, fazer hoje', { classe: 'dc-btn-amarelo dc-btn-grande', iconeNome: 'raio' });
+      ok.addEventListener('click', async () => {
+        if (!/^\d{2}:\d{2}$/.test(hora.value)) { erro.hidden = false; hora.focus(); return; }
+        if (aprovarAntes) {
+          const antes = p.status;
+          await ctx.gravar('/api/propostas/decisao', { propostaId: p.id, acao: 'aprovar', comentario: `Fazer hoje, meta ${hora.value}.`, versao: p.versao }, [ok, voltar], 'Ideia aprovada.');
+          if (propostas().find(x => x.id === p.id)?.status === antes) return;
+        }
+        await ctx.gravar('/api/propostas/fazer-hoje', { propostaId: p.id, horario: hora.value }, [ok, voltar], `Marcada para hoje, meta ${hora.value}.`);
+        if (ehHoje(propostas().find(x => x.id === p.id) || {})) { fechar(); fecharModal?.(); }
+      });
+      return h('div', { class: 'dc-confirma' },
+        h('div', { class: 'dc-confirma-icone amarelo' }, icone('raio', { tamanho: 30 })),
+        h('p', { class: 'dc-confirma-texto' }, 'A equipe passa esta na frente de tudo e entrega um pacote só dela. Quando ficar pronto, você recebe o aviso, autoriza com o código e ela vai para o jogo na hora — sem esperar o dia normal de publicação.'),
+        h('div', { class: 'dc-confirma-alvo' }, miniaturaProposta(p, 'dc-midia-mini'), h('div', {}, h('strong', {}, p.titulo), h('div', { class: 'dc-fraco' }, `${p.id} · versão ${p.versao}`))),
+        h('label', { class: 'dc-rotulo', for: `dc-hoje-${p.id}` }, 'Meta de horário (Brasília)'), hora, erro,
+        h('p', { class: 'dc-fraco' }, 'É uma meta: se não der tempo com qualidade, a equipe avisa no app em vez de entregar com pressa.'),
+        h('div', { class: 'dc-confirma-botoes' }, ok, voltar));
+    },
+  });
+}
+
+async function desfazerHoje(p, fecharModal) {
+  await ctx.gravar('/api/propostas/fazer-hoje', { propostaId: p.id, desfazer: true }, [], 'Voltou para a data normal.');
+  if (!propostas().find(x => x.id === p.id)?.fazerHoje) fecharModal?.();
 }
 
 function folhaDetalhesProposta(p) {
@@ -385,6 +454,8 @@ function confirmarDecisao(p, acao, fecharModal) {
 // ------------------------------------------------------------------ lançamentos (autorização final)
 function quandoPublica(l) {
   const cfg = dados().config || {};
+  // "Fazer hoje": sai assim que o dono autoriza (o horário é só a meta combinada).
+  if (l.urgente) return { dia: 'Hoje, assim que você autorizar', hora: null, texto: `Hoje · meta ${l.horario || '—'}` };
   if (ehEvento(l) && l.evento?.inicio) {
     const i = l.evento.inicio;
     const dia = `${diaSemana(i.slice(0, 10))}, ${dataCurta(i.slice(0, 10))}`;

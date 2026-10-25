@@ -69,6 +69,36 @@ export function decidirProposta(dados, usuario, { propostaId, acao, comentario, 
   });
 }
 
+/** Data de hoje em Brasília (AAAA-MM-DD). */
+export function hojeEmBrasilia(agora = new Date()) {
+  return new Date(agora.getTime() - 3 * 3600_000).toISOString().slice(0, 10);
+}
+
+/**
+ * "Fazer hoje": o dono adianta uma proposta APROVADA para sair hoje, fora do dia normal de publicação.
+ * Não aprova nada sozinho e não publica: a equipe prioriza, entrega um pacote só dela, o dono autoriza
+ * (assinatura) e ela vai para o jogo assim que autorizada. `horario` é a meta do dia (ex.: evento às 19h).
+ * `desfazer: true` volta para a data normal.
+ */
+export function fazerHoje(dados, usuario, { propostaId, horario, desfazer = false }, agora = new Date()) {
+  exigirProprietario(usuario);
+  const p = dados.propostas.find(x => x.id === propostaId);
+  if (!p) throw new ErroRegra(404, 'Proposta não encontrada.');
+  if (desfazer) {
+    if (!p.fazerHoje) throw new ErroRegra(409, 'Esta proposta não estava marcada para hoje.');
+    const antes = p.fazerHoje;
+    delete p.fazerHoje;
+    return evento(usuario, 'proposta.fazer_hoje_desfeito', { tipo: 'proposta', id: p.id, versao: p.versao }, { resultado: { de: antes, para: null } });
+  }
+  if (![STATUS.APROVADA_DEV, STATUS.EM_DEV, STATUS.EM_TESTES].includes(p.status)) throw new ErroRegra(409, 'Só dá para adiantar uma proposta aprovada que ainda não foi entregue.');
+  if (!p.decisoes?.some(d => d.acao === 'aprovar' && d.versao === p.versao)) throw new ErroRegra(409, 'Aprove esta versão da proposta antes de adiantar.');
+  if (p.tipo === 'thumbnail') throw new ErroRegra(409, 'Thumbnail já é trocada no dia marcado; use a data da publicação.');
+  const hora = String(horario || '').trim();
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) throw new ErroRegra(400, 'Informe o horário no formato HH:MM.');
+  p.fazerHoje = { data: hojeEmBrasilia(agora), horario: hora, por: autor(usuario), em: agora.toISOString() };
+  return evento(usuario, 'proposta.fazer_hoje', { tipo: 'proposta', id: p.id, versao: p.versao }, { resultado: { para: p.fazerHoje } });
+}
+
 /** Comentários: proprietário e equipe. */
 export function comentar(dados, usuario, { alvoTipo, alvoId, texto }) {
   if (!['proprietario', 'equipe'].includes(usuario?.papel)) throw new ErroRegra(403, 'Sem permissão.');

@@ -159,6 +159,8 @@ export function abrirFolha(opcoes) { return camada('folha', opcoes); }
 /** Janela central com fundo escuro (no celular ocupa quase a tela toda). */
 export function abrirModal(opcoes) { return camada('modal', opcoes); }
 export function fecharTudo() { [...pilha].reverse().forEach(f => f()); }
+/** true quando há folha ou janela aberta (a atualização automática espera fechar). */
+export const temCamadaAberta = () => pilha.length > 0;
 window.addEventListener('keydown', e => { if (e.key === 'Escape' && pilha.length) pilha.at(-1)(); });
 
 // ------------------------------------------------------------------ peças pequenas
