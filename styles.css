@@ -149,9 +149,10 @@ label { display: block; font-weight: 650; font-size: .92rem; margin: 10px 0 6px;
 .voltar { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--surface); box-shadow: var(--sombra); color: var(--text); display: grid; place-items: center; cursor: pointer; flex: none; }
 
 @media (min-width: 900px) {
-  .app { display: grid; grid-template-columns: 252px minmax(0, 1fr); }
+  /* Lateral FIXA na tela (sticky não funciona com o bloqueio de rolagem lateral do body). */
+  .app { display: block; padding-left: 252px; }
   .barra-abas { display: none; }
-  .lateral { display: flex; flex-direction: column; gap: 18px; position: sticky; top: 0; height: 100vh; background: #1b1b1a; color: #f2f2f0; padding: 24px 16px; }
+  .lateral { display: flex; flex-direction: column; gap: 18px; position: fixed; left: 0; top: 0; bottom: 0; width: 252px; height: 100vh; height: 100dvh; overflow-y: auto; z-index: 20; background: #1b1b1a; color: #f2f2f0; padding: 24px 16px; }
   .principal { padding: 28px 32px 48px; width: 100%; }
   .marca { display: flex; flex-direction: column; gap: 4px; padding: 0 8px 8px; }
   .marca small { color: #fdd001; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: .72rem; }
