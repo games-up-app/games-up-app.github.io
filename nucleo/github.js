@@ -6,6 +6,7 @@
 // Se outro processo gravou antes (a branch não avança em fast-forward), relê e tenta de novo.
 
 const CAMINHO_VALIDO = /^[a-z0-9][a-z0-9\-_/]*\.json$/;
+import { MIDIA_ANDAMENTO } from './andamento.js';
 // Só imagens comuns (SVG pode carregar código; fica de fora).
 const PREVIA_VALIDA = /^previas\/[a-z0-9][a-z0-9\-_/]*\.(png|jpg|jpeg|webp)$/;
 const TIPOS_IMAGEM = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
@@ -130,6 +131,15 @@ export class RepoGitHub {
     const r = await this.req('GET', `/repos/${this.repo}/contents/${this.dir}/${rel}?ref=${encodeURIComponent(this.branch)}`, null, { aceitar: 'application/vnd.github.raw', bruto: true });
     if (!r) return null;
     return new Blob([await r.arrayBuffer()], { type: TIPOS_IMAGEM[rel.split('.').pop()] });
+  }
+
+  /** Mídia privada da linha do tempo. O token nunca entra na URL do player. */
+  async lerMidiaAndamento(rel) {
+    if (!MIDIA_ANDAMENTO.test(rel || '')) throw new Error('Mídia de andamento inválida.');
+    const r = await this.req('GET', `/repos/${this.repo}/contents/${this.dir}/${rel}?ref=${encodeURIComponent(this.branch)}`, null, { aceitar: 'application/vnd.github.raw', bruto: true });
+    if (!r) return null;
+    const ext = rel.split('.').pop();
+    return new Blob([await r.arrayBuffer()], { type: ({ mp4: 'video/mp4', webm: 'video/webm', ...TIPOS_IMAGEM })[ext] });
   }
 
   /**

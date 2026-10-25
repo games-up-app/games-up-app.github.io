@@ -1,0 +1,22 @@
+.barra-abas { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.barra-abas .aba-nome { font-size: 10px; }
+.pagina-andamento { display: grid; gap: 16px; min-width: 0; }
+.and-resumo h2, .and-explorer h3 { display:flex; align-items:center; gap:8px; }
+.and-resumo { border-top: 4px solid #a873ff; }
+.and-filtros { display:grid; grid-template-columns: minmax(0,1fr); gap:12px; }
+.and-filtros label { display:grid; gap:6px; min-width:0; }
+.and-filtros select { width:100%; min-width:0; font-size:16px; }
+.and-linha-tempo { display:grid; gap:20px; border-left:2px solid #9658dc; padding-left:12px; }
+.and-registro { min-width:0; overflow-wrap:anywhere; }
+.and-registro time { display:block; color:var(--text-2); margin:12px 0; font-size:13px; }
+.and-midias { display:grid; gap:12px; }
+.and-midia { margin:0; min-width:0; }
+.and-midia-espera { display:grid; min-height:90px; place-items:center; background:var(--surface-2); border-radius:12px; overflow:hidden; }
+.and-midia img, .and-midia video, .and-imagem-ampliada { display:block; width:100%; max-width:100%; height:auto; border-radius:12px; }
+.and-ampliar { padding:0; border:0; width:100%; background:transparent; cursor:zoom-in; }
+.and-midia figcaption { font-size:13px; padding:8px 0; }
+.and-alteracao, .and-testes { padding:12px; margin-top:10px; border:1px solid var(--border); border-radius:12px; }
+.and-alteracao code { white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; }
+.and-propostas { display:grid; gap:10px; }
+.and-proposta { width:100%; text-align:left; display:grid; gap:8px; }
+@media(min-width:700px) { .and-midias, .and-filtros { grid-template-columns:repeat(2,minmax(0,1fr)); } }

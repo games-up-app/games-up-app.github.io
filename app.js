@@ -18,6 +18,7 @@ import { telaNumeros } from './telas/numeros.js';
 import { telaPesquisa } from './telas/pesquisa.js';
 import { telaAjustes } from './telas/ajustes.js';
 import { telaTarefas } from './telas/tarefas.js';
+import { telaAndamento } from './telas/andamento.js';
 
 const estado = { usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null, pushAtivo: null };
 // Os dados ficam na organização games-up-app: o token precisa ter ela como "Resource owner".
@@ -29,6 +30,7 @@ const LINK_TOKEN_EQUIPE = 'https://github.com/settings/personal-access-tokens/ne
 const ABAS = [
   { id: 'inicio', nome: 'Início', icone: 'inicio', tela: telaInicio },
   { id: 'decisoes', nome: 'Decisões', icone: 'decisoes', tela: telaDecisoes },
+  { id: 'andamento', nome: 'Andamento', icone: 'martelo', tela: telaAndamento },
   { id: 'numeros', nome: 'Números', icone: 'numeros', tela: telaNumeros },
   { id: 'pesquisa', nome: 'Pesquisa', icone: 'pesquisa', tela: telaPesquisa },
   { id: 'ajustes', nome: 'Ajustes', icone: 'ajustes', tela: telaAjustes },

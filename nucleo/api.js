@@ -3,7 +3,7 @@
 // privado (RepoGitHub) com o token do proprietário. Quem tem o token é o proprietário.
 import { ErroRegra, STATUS, decidirProposta, comentar, atualizarTarefa, decidirLancamento, alterarConfig } from './regras.js';
 
-const ARQUIVOS = ['meta', 'metricas', 'analytics', 'jogo', 'concorrentes', 'noticias', 'thumbnails', 'propostas', 'tarefas', 'tendencias', 'discord', 'lancamentos', 'comentarios', 'config', 'saude-agendamentos', 'relatorios/indice', 'executor', 'push/inscricoes'];
+const ARQUIVOS = ['meta', 'metricas', 'andamento', 'analytics', 'jogo', 'concorrentes', 'noticias', 'thumbnails', 'propostas', 'tarefas', 'tendencias', 'discord', 'lancamentos', 'comentarios', 'config', 'saude-agendamentos', 'relatorios/indice', 'executor', 'push/inscricoes'];
 
 function mes(d) { return d.toISOString().slice(0, 7); }
 
