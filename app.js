@@ -20,7 +20,10 @@ import { telaAjustes } from './telas/ajustes.js';
 import { telaTarefas } from './telas/tarefas.js';
 
 const estado = { usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null, pushAtivo: null };
-const LINK_TOKEN = 'https://github.com/settings/personal-access-tokens/new?name=Games%20Up&description=Painel%20da%20Escola%20Brasileira&expires_in=366&contents=write';
+// Os dados ficam na organização games-up-app: o token precisa ter ela como "Resource owner".
+const LINK_TOKEN = 'https://github.com/settings/personal-access-tokens/new?name=Games%20Up&description=Painel%20da%20Escola%20Brasileira&target_name=games-up-app&expires_in=366&contents=write&issues=write';
+// Equipe: só lê os dados e comenta (os comentários vão para um tópico de Issues).
+const LINK_TOKEN_EQUIPE = 'https://github.com/settings/personal-access-tokens/new?name=Games%20Up%20Equipe&description=Games%20Up%20-%20equipe%20(ver%20e%20comentar)&target_name=games-up-app&expires_in=366&contents=read&issues=write';
 
 // Abas da barra (embaixo no celular, na lateral no computador).
 const ABAS = [
@@ -169,9 +172,9 @@ function telaLogin(msg) {
   };
   const passo = (n, ...conteudo) => h('li', { class: 'passo' }, h('span', { class: 'passo-num' }, String(n)), h('div', {}, ...conteudo));
   const comoCriar = () => abrirFolha({ titulo: 'Criar o token', conteudo: h('ol', { class: 'passos-lista' },
-    passo(1, h('a', { href: LINK_TOKEN, target: '_blank', rel: 'noopener noreferrer' }, 'Toque aqui para criar o token'), '. O nome e as permissões já vêm preenchidos.'),
-    passo(2, 'Em ', h('strong', {}, 'Repository access'), ', escolha ', h('strong', {}, 'Only select repositories'), ' e marque ', h('strong', {}, 'Automatizar-Escola-Brasileira'), '.'),
-    passo(3, 'Toque em ', h('strong', {}, 'Generate token'), ', copie e cole no campo da tela de entrada.')) });
+    passo(1, 'Toque no link certo: ', h('a', { href: LINK_TOKEN, target: '_blank', rel: 'noopener noreferrer' }, 'sou o dono'), ' ou ', h('a', { href: LINK_TOKEN_EQUIPE, target: '_blank', rel: 'noopener noreferrer' }, 'sou da equipe'), '. O nome e as permissões já vêm preenchidos.'),
+    passo(2, 'Em ', h('strong', {}, 'Resource owner'), ', confira se está ', h('strong', {}, 'games-up-app'), '. Em ', h('strong', {}, 'Repository access'), ', escolha ', h('strong', {}, 'Only select repositories'), ' e marque ', h('strong', {}, 'Automatizar-Escola-Brasileira'), '.'),
+    passo(3, 'Toque em ', h('strong', {}, 'Generate token'), ', copie e cole no campo da tela de entrada. Se aparecer "pendente de aprovação", o dono aprova em games-up-app → Settings → Personal access tokens.')) });
   document.getElementById('raiz').replaceChildren(
     h('main', { class: 'login', id: 'conteudo' },
       h('section', { class: 'login-marca' },

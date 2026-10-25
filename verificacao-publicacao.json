@@ -1,9 +1,9 @@
 {
-  "revisao": "b0be214fc792619a1aedf44f87ebfdaa8602be79",
+  "revisao": "1b356b04187919409e953293f307b59a8614cbef",
   "arquivos": {
     "aparelhos-autorizados.json": "a586be2a63e3d3f7609d69ac412fc284c023240a8efe0be960c1d1740e71ea13",
-    "app.js": "7f9a0412c5352b3d44a78b83020387674541d671bd50ccd093342f49fc706885",
-    "config.js": "bac56d26b0b57fcde0bf47ca20930db602dde92cc866ab37a557510144167181",
+    "app.js": "4cba9bcc3cc39a0f97a4afc8ff360f9be98d7c56f434032bf6acdf5d40ae6764",
+    "config.js": "7575f0d75b73768ef5209c4d0c9c83a83723a23fca7b8ae6c4e1c59ebde45bdb",
     "estilos/componentes.css": "f33e0c32ec7bcc84b1c8111c35c350c00c35643646ec5e6c69ecbd336dfa19bc",
     "estilos/decisoes.css": "917393b7ac805f1379df12ed81c492324bc50831fe78b8b059dddb11d8264eda",
     "estilos/numeros.css": "c77f2acca0871036741b4797dae2465ca5ebac71308679f90dae67b5b9bcdcfc",
@@ -21,7 +21,7 @@
     "nucleo/aparelho.js": "da71eb906c39561bc2e798cde62cd46478729128971de218ac2ae7ff4d1f47aa",
     "nucleo/api.js": "7b27014f20648bcf92ef4b05af239088541bff951677dc8d41d3d843aa083885",
     "nucleo/assinatura.js": "36d63fd3c6cbcb6d8916a9ab917780490157d00da53c0803faa40841b557538b",
-    "nucleo/cadastro-aparelho.js": "92210d53d9a8e9273f3027e4b4a140b4fb93d2b087f08c6f6a1090255f77eb4c",
+    "nucleo/cadastro-aparelho.js": "e036941f1a86d4444d69bff608cce235ee014a355aa96914465d6d32ae449126",
     "nucleo/canonico.js": "5af3043b4857d67c779bb1ac194e84f58c44aa97c830f147f4aec01e2331684f",
     "nucleo/estatistica.js": "6b3d70ce737bb11dd64c12baab2ca619aef4725b0ef232c8468d8b2776f1fd7d",
     "nucleo/github.js": "48b1c3d6abe06283833516d353840d75f2948d6f82e14d4e63f4cf1cee08da2b",

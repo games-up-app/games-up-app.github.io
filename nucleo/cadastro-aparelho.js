@@ -2,7 +2,9 @@
 import { assinarObjeto } from './assinatura.js';
 import { canonico } from './canonico.js';
 
-export const REPO_CADASTRO = '0SrGood/Automatizar-Escola-Brasileira';
+export const REPO_CADASTRO = 'games-up-app/Automatizar-Escola-Brasileira';
+// Pedidos feitos antes da mudança para a organização continuam válidos.
+const REPOS_ACEITOS = [REPO_CADASTRO, '0SrGood/Automatizar-Escola-Brasileira'];
 const CAMPOS_ASSINADOS = ['tipo', 'repo', 'id', 'usuarioId', 'publicaPem', 'impressaoDigital', 'criadaEm', 'nonce'];
 const CAMPOS_PEDIDO = [...CAMPOS_ASSINADOS, 'codigo', 'assinatura'];
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
@@ -53,7 +55,7 @@ export async function criarPedidoCadastro({ privada, publicaPem, usuarioId }) {
 export async function validarPedidoCadastro(pedido, ownerLogin) {
   const nao = motivo => ({ ok: false, motivo });
   if (!pedido || typeof pedido !== 'object' || Array.isArray(pedido) || Object.keys(pedido).length !== CAMPOS_PEDIDO.length || Object.keys(pedido).some(c => !CAMPOS_PEDIDO.includes(c))) return nao('Formato do pedido inválido.');
-  if (pedido.tipo !== 'cadastro-aparelho' || pedido.repo !== REPO_CADASTRO) return nao('Finalidade ou repositório do pedido inválido.');
+  if (pedido.tipo !== 'cadastro-aparelho' || !REPOS_ACEITOS.includes(pedido.repo)) return nao('Finalidade ou repositório do pedido inválido.');
   if (!USUARIO.test(ownerLogin || '') || !USUARIO.test(pedido.usuarioId || '') || pedido.usuarioId.toLowerCase() !== ownerLogin.toLowerCase()) return nao('O pedido não pertence ao proprietário.');
   if (!UUID.test(pedido.id || '') || !UUID.test(pedido.nonce || '')) return nao('Identificador ou nonce inválido.');
   const data = new Date(pedido.criadaEm);
