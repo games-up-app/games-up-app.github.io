@@ -32,6 +32,7 @@ export function s(tag, attrs = {}, ...filhos) {
 
 // Cada ícone: lista de "d" de paths (viewBox 24x24, traço 2). Alguns usam círculos (c:cx,cy,r).
 const ICONES = {
+  grade: ['M3 3h7v7H3z', 'M14 3h7v7h-7z', 'M3 14h7v7H3z', 'M14 14h7v7h-7z'],
   inicio: ['M3 10.5 12 3l9 7.5', 'M5 9.5V21h5v-6h4v6h5V9.5'],
   decisoes: ['M9 11l3 3 8-8', 'M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9'],
   tarefas: ['M9 6h12', 'M9 12h12', 'M9 18h12', 'M4 6h.01', 'M4 12h.01', 'M4 18h.01'],

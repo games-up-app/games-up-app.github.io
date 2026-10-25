@@ -1,4 +1,4 @@
-.barra-abas { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.barra-abas { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .barra-abas .aba-nome { font-size: 10px; }
 .pagina-andamento { display: grid; gap: 16px; min-width: 0; }
 .and-resumo h2, .and-explorer h3 { display:flex; align-items:center; gap:8px; }

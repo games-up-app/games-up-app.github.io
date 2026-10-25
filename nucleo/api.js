@@ -2,8 +2,9 @@
 // Mantém as mesmas rotas da versão com servidor, mas lê e grava direto no repositório
 // privado (RepoGitHub) com o token do proprietário. Quem tem o token é o proprietário.
 import { ErroRegra, STATUS, decidirProposta, comentar, atualizarTarefa, decidirLancamento, alterarConfig } from './regras.js';
+import { validarIdeia } from './ideias.js';
 
-const ARQUIVOS = ['meta', 'metricas', 'andamento', 'analytics', 'jogo', 'concorrentes', 'noticias', 'thumbnails', 'propostas', 'tarefas', 'tendencias', 'discord', 'lancamentos', 'comentarios', 'config', 'saude-agendamentos', 'relatorios/indice', 'executor', 'push/inscricoes'];
+const ARQUIVOS = ['meta', 'metricas', 'ideias', 'andamento', 'analytics', 'jogo', 'concorrentes', 'noticias', 'thumbnails', 'propostas', 'tarefas', 'tendencias', 'discord', 'lancamentos', 'comentarios', 'config', 'saude-agendamentos', 'relatorios/indice', 'executor', 'push/inscricoes'];
 
 function mes(d) { return d.toISOString().slice(0, 7); }
 
@@ -57,6 +58,23 @@ export function criarApi({ store, usuario, assinar = null, papel = 'proprietario
   }
 
   const rotas = {
+    'POST /api/ideias': async corpo => {
+      if (eu.papel !== 'proprietario') throw new ErroRegra(403, 'Somente o dono envia ideias por este formulário.');
+      const c = validarIdeia(texto(corpo));
+      const ideia = await store.transacao(async tx => {
+        const d = (await tx.ler('ideias.json')) || { itens: [] };
+        const existente = d.itens.find(x => x.id === c.id);
+        if (existente) {
+          if (existente.titulo !== c.titulo || existente.texto !== c.texto || existente.assunto !== c.assunto) throw new ErroRegra(409, 'Este envio já existe com outro conteúdo. Atualize a página e confira seu histórico.');
+          return existente;
+        }
+        const i = { ...c, status: 'nova', criadaEm: new Date().toISOString(), por: { id: eu.id, nome: eu.nome }, respostas: [], propostaIds: [] };
+        d.itens.push(i); tx.gravar('ideias.json', d);
+        await auditar(tx, { id: crypto.randomUUID(), acao: 'ideia.enviar', em: i.criadaEm, por: eu, alvo: { tipo: 'ideia', id: i.id } });
+        return i;
+      }, 'painel: nova ideia do proprietário');
+      return { ok: true, ideia };
+    },
     'GET /api/painel': async () => {
       const d = new Date();
       const anterior = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1));

@@ -493,6 +493,7 @@ export function telaInicio() {
   buscarAoVivo();
   return h('div', { class: 'pagina-inicio' },
     saudacao(),
+    cardBotao('card-atalho atalho-ideia', () => ctx.irPara('ideias'), h('span', { class: 'resumo-icone tom-amarelo' }, icone('lampada', { tamanho: 24 })), h('span', { class: 'atalho-texto' }, h('strong', {}, 'Enviar ideia ou sugestão'), h('span', {}, 'Thumbnail, descrição, nome ou melhoria do jogo')), icone('direita')),
     precisaDeVoce(),
     cardJogo(),
     calendario(),

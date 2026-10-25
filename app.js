@@ -19,6 +19,7 @@ import { telaPesquisa } from './telas/pesquisa.js';
 import { telaAjustes } from './telas/ajustes.js';
 import { telaTarefas } from './telas/tarefas.js';
 import { telaAndamento } from './telas/andamento.js';
+import { telaIdeias } from './telas/ideias.js';
 
 const estado = { usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null, pushAtivo: null };
 // Os dados ficam na organização games-up-app: o token precisa ter ela como "Resource owner".
@@ -31,6 +32,7 @@ const ABAS = [
   { id: 'inicio', nome: 'Início', icone: 'inicio', tela: telaInicio },
   { id: 'decisoes', nome: 'Decisões', icone: 'decisoes', tela: telaDecisoes },
   { id: 'andamento', nome: 'Andamento', icone: 'martelo', tela: telaAndamento },
+  { id: 'ideias', nome: 'Ideias', icone: 'lampada', tela: telaIdeias },
   { id: 'numeros', nome: 'Números', icone: 'numeros', tela: telaNumeros },
   { id: 'pesquisa', nome: 'Pesquisa', icone: 'pesquisa', tela: telaPesquisa },
   { id: 'ajustes', nome: 'Ajustes', icone: 'ajustes', tela: telaAjustes },
@@ -40,6 +42,18 @@ const PAGINAS = [
   { id: 'tarefas', nome: 'Tarefas', icone: 'tarefas', tela: telaTarefas, pai: 'inicio' },
 ];
 const TODAS = [...ABAS, ...PAGINAS];
+const PRINCIPAIS_CELULAR = ['inicio', 'decisoes', 'andamento', 'ideias'];
+
+function abrirMais() {
+  const atalhos = [...ABAS.filter(a => !PRINCIPAIS_CELULAR.includes(a.id)), ...PAGINAS];
+  abrirFolha({ titulo: 'Mais', classe: 'folha-mais', conteudo: h('div', { class: 'menu-mais' },
+    h('button', { type: 'button', class: 'mais-perfil', onclick: () => irPara('ajustes') },
+      h('span', { class: 'mais-avatar', 'aria-hidden': 'true' }, String(estado.usuario?.nome || 'T').slice(0, 1).toUpperCase()),
+      h('span', {}, h('strong', {}, estado.usuario?.nome || 'Tallyson'), h('small', {}, estado.usuario?.papel === 'proprietario' ? 'Proprietário · ver ajustes' : 'Equipe · ver ajustes')), icone('direita')),
+    h('div', { class: 'mais-grade' }, atalhos.map(a => h('button', { type: 'button', class: 'mais-atalho', onclick: () => irPara(a.id) }, icone(a.icone, { tamanho: 26 }), h('strong', {}, a.nome)))),
+    h('button', { type: 'button', class: 'mais-linha', onclick: () => { alternarTema(); fecharTudo(); abrirMais(); } }, icone('sol'), temaAtual() === 'dark' ? 'Usar modo claro' : 'Usar modo escuro'),
+    h('button', { type: 'button', class: 'mais-linha mais-sair', onclick: sair }, icone('esquerda'), 'Sair do Games Up')) });
+}
 
 // ------------------------------------------------------------------ utilidades da casca
 function avisar(msg, erro = false) {
@@ -244,6 +258,8 @@ function render() {
     h('span', { class: 'aba-icone' }, icone(a.icone, { tamanho: 24 }),
       a.id === 'decisoes' && n ? h('span', { class: 'contador', 'aria-label': `${n} esperando sua decisão` }, n > 9 ? '9+' : String(n)) : null),
     h('span', { class: 'aba-nome' }, a.nome));
+  const menuMais = h('button', { type: 'button', class: 'aba', 'aria-haspopup': 'dialog', 'aria-current': !PRINCIPAIS_CELULAR.includes(pagina.id) ? 'page' : null, onclick: abrirMais },
+    h('span', { class: 'aba-icone' }, icone('grade', { tamanho: 24 })), h('span', { class: 'aba-nome' }, 'Mais'));
 
   let conteudo;
   try { conteudo = pagina.tela(); } catch (e) {
@@ -273,7 +289,7 @@ function render() {
           h('img', { class: 'lateral-jogo', src: 'marca/jogo.png', alt: '', width: 36, height: 36, onerror: e => e.target.remove() }),
           h('div', {}, h('strong', {}, 'Escola Brasileira'), h('small', {}, estado.usuario?.nome || '')))),
       h('main', { class: 'principal', id: 'conteudo' }, topo, conteudo),
-      h('nav', { class: 'barra-abas', 'aria-label': 'Menu principal' }, ABAS.map(botaoAba))));
+      h('nav', { class: 'barra-abas', 'aria-label': 'Menu principal' }, ABAS.filter(a => PRINCIPAIS_CELULAR.includes(a.id)).map(botaoAba), menuMais)));
   if (render.mesmaTela) window.scrollTo(0, rolagem);
   render.mesmaTela = true;
 }
