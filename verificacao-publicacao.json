@@ -1,7 +1,7 @@
 {
-  "revisao": "4980f4100a4ed0049f624146b9bf13526af26b47",
+  "revisao": "574cfecd9a9a4f34ff4be932be803a5c402132fd",
   "arquivos": {
-    "aparelhos-autorizados.json": "a586be2a63e3d3f7609d69ac412fc284c023240a8efe0be960c1d1740e71ea13",
+    "aparelhos-autorizados.json": "50481e94f491dbc3bcc8797aede84768ecd12a5a1094365057ad6d882f88a1cf",
     "app.js": "b17ac31e3a9c3661c796df4310bff9731eb1fe4d1b7a8a4f961d68da223cc4ad",
     "config.js": "7575f0d75b73768ef5209c4d0c9c83a83723a23fca7b8ae6c4e1c59ebde45bdb",
     "estilos/componentes.css": "cb927bebf21e413acee22d8fc5c01f6c215c291fa9116c39fb3079bc9d6ebf59",
