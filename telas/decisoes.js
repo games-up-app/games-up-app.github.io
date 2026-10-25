@@ -129,6 +129,13 @@ function imagemPacote(l) {
 }
 const pacoteEhImagem = l => /^builds\/[a-z0-9-]+\.(png|jpe?g)$/i.test(l.artefato?.caminho || '');
 
+// Categoria da proposta (regra da semana: 3 entretenimento, 2 crescimento, 1 otimização, 1 correção).
+const CATEGORIAS = { entretenimento: ['Entretenimento', 'evento', 'relevante'], crescimento: ['Crescimento', 'grafico', 'ok'], otimizacao: ['Otimização', 'raio', 'curiosidade'], correcao: ['Correção', 'martelo', 'warn'], thumbnail: ['Thumbnail', 'thumbnail', ''] };
+function chipCategoria(p) {
+  const c = CATEGORIAS[p.categoria];
+  return c ? chip(c[0], { tom: c[2], iconeNome: c[1] }) : null;
+}
+
 function primeiraPrevia(p) { return (p.previas || []).find(ehImagem) || null; }
 function rotuloImagem(p, caminho) {
   const ehThumb = p.tipo === 'thumbnail' || /previas\/thumbnails\//.test(caminho || '');
@@ -204,7 +211,7 @@ function cardProposta(p) {
   return h('button', { type: 'button', class: `dc-card-proposta${decidivel ? ' pede-voce' : ''}`, onclick: () => abrirProposta(p.id), 'aria-label': `Abrir proposta ${p.id}: ${p.titulo}` },
     miniaturaProposta(p),
     h('div', { class: 'dc-card-corpo' },
-      h('div', { class: 'dc-card-chips' }, seloStatus(p.status), chip(p.id, { iconeNome: iconeDoTipo(p.tipo) })),
+      h('div', { class: 'dc-card-chips' }, seloStatus(p.status), chip(p.id, { iconeNome: iconeDoTipo(p.tipo) }), chipCategoria(p), p.mudaDesign ? chip('Muda o visual', { tom: 'quente', iconeNome: 'pincel' }) : null),
       h('h3', { class: 'dc-card-titulo' }, p.titulo),
       h('p', { class: 'dc-card-resumo' }, curto(p.resumo || p.descricao, 110)),
       h('div', { class: 'dc-card-pe' },
@@ -249,7 +256,7 @@ function abrirProposta(id) {
       const plano = p.hipotese ? `${p.hipotese.metrica}: ${p.hipotese.esperado}` : null;
       return h('div', { class: 'dc-detalhe' },
         heroi,
-        h('div', { class: 'dc-card-chips' }, seloStatus(p.status), chip(p.tipo || 'ideia', { iconeNome: iconeDoTipo(p.tipo) }),
+        h('div', { class: 'dc-card-chips' }, seloStatus(p.status), chipCategoria(p) || chip(p.tipo || 'ideia', { iconeNome: iconeDoTipo(p.tipo) }), p.mudaDesign ? chip('Muda o visual do jogo', { tom: 'quente', iconeNome: 'pincel' }) : null,
           p.semanaAlvo ? chip(`Previsto ${dataCurta(p.semanaAlvo)}`, { iconeNome: 'calendario' }) : null),
         h('h2', { class: 'dc-detalhe-titulo' }, p.titulo),
         p.bloqueio ? h('div', { class: 'dc-alerta warn' }, icone('alerta', { tamanho: 20 }), h('div', {}, h('strong', {}, 'Ainda não dá para decidir. '), p.bloqueio)) : null,
@@ -564,10 +571,25 @@ export function telaDecisoes() {
       outros.length ? h('div', { class: 'dc-grade-cards' }, outros.map(cardLancamentoCompacto)) : null);
   }
 
+  // Meta da semana: no mínimo 7 propostas (3 entretenimento, 2 crescimento, 1 otimização, 1 correção).
+  const META = { entretenimento: 3, crescimento: 2, otimizacao: 1, correcao: 1 };
+  const limite = new Date(Date.now() - 7 * 86400_000).toISOString().slice(0, 10);
+  const daSemana = todasP.filter(p => String(p.criadaEm || '') >= limite);
+  const feitas = Object.fromEntries(Object.keys(META).map(c => [c, daSemana.filter(p => p.categoria === c).length]));
+  const totalFeitas = Object.keys(META).reduce((n, c) => n + Math.min(META[c], feitas[c]), 0);
+  const blocoSemana = area !== 'ideias' ? null : h('div', { class: 'dc-meta-semana' },
+    h('div', { class: 'dc-meta-topo' }, icone('calendario', { tamanho: 18 }), h('strong', {}, `Propostas da semana: ${totalFeitas} de 7`),
+      h('span', { class: 'dc-fraco' }, totalFeitas >= 7 ? 'semana completa' : 'chegam toda segunda e terça')),
+    h('div', { class: 'dc-card-chips' }, Object.entries(META).map(([c, meta]) => {
+      const [nome, ic] = CATEGORIAS[c];
+      return chip(`${nome} ${Math.min(meta, feitas[c])}/${meta}`, { tom: feitas[c] >= meta ? 'ok' : '', iconeNome: ic });
+    })));
+
   return h('div', { class: 'tela-decisoes' },
     h('div', { class: 'dc-areas' },
       botaoArea('ideias', 'lampada', ideiasPendentes, 'Ideias para aprovar', 'Libere a equipe para preparar'),
       botaoArea('publicacoes', 'foguete', pubPendentes, 'Publicações para autorizar', 'Libere o que vai para o jogo')),
+    blocoSemana,
     h('div', { class: 'dc-filtros', role: 'tablist', 'aria-label': 'Filtrar por situação' },
       SUBABAS.map(([id, nome]) => h('button', { type: 'button', role: 'tab', class: 'dc-filtro', 'aria-selected': String(filtro === id), onclick: () => escolher('decisoes', id) },
         nome, h('span', { class: 'dc-filtro-n' }, String(contagem[id]))))),

@@ -259,3 +259,9 @@
 .dc-midia-heroi { max-height: 46vh; }
 .dc-midia-heroi img { object-fit: contain; background: #000; }
 .dc-autorizacao { max-width: 860px; width: 100%; justify-self: center; }
+
+/* Meta da semana: no mínimo 7 propostas por categoria */
+.dc-meta-semana { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); margin: 4px 0 8px; }
+.dc-meta-topo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dc-meta-topo .dc-fraco { margin-left: auto; font-size: .85rem; }
+.dc-filtro { white-space: nowrap; }
