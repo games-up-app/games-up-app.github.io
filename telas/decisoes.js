@@ -127,6 +127,36 @@ function imagemPacote(l) {
   cachePacote.get(chave).then(u => { if (u) img.src = u; else img.remove(); });
   return img;
 }
+const ehEvento = l => l.tipo === 'evento';
+function tituloLanc(l, longo = false) {
+  if (ehEvento(l)) return longo ? 'Evento na página do jogo' : 'Evento no Roblox';
+  if (l.tipo === 'thumbnail') return longo ? 'Nova thumbnail para o jogo' : 'Thumbnail';
+  return 'Atualização do jogo';
+}
+function chipTipoLanc(l) {
+  if (ehEvento(l)) return chip('Evento', { iconeNome: 'evento', tom: 'relevante' });
+  return chip(l.tipo === 'thumbnail' ? 'Thumbnail' : 'Jogo', { iconeNome: l.tipo === 'thumbnail' ? 'thumbnail' : 'roblox' });
+}
+
+/** Evento: mostra como ele aparece na página do jogo no Roblox (capa, título, subtítulo, datas, descrição). */
+function previaEvento(l, grande = true) {
+  const ev = l.evento || {};
+  const data = iso => (iso ? `${diaSemana(iso.slice(0, 10)).slice(0, 3).toLowerCase()}, ${dataCurta(iso.slice(0, 10))}, ${iso.slice(11, 16)}` : '—');
+  const desc = String(ev.descricao || '');
+  return h('div', { class: 'dc-heroi-bloco' },
+    h('div', { class: 'dc-evento' },
+      h('div', { class: 'dc-evento-capa' }, moldura(grande ? 'dc-midia-heroi' : 'dc-midia-card', 'evento', imagemPacote(l)),
+        h('span', { class: 'dc-evento-data' }, data(ev.inicio))),
+      h('div', { class: 'dc-evento-corpo' },
+        ev.categoria ? h('div', { class: 'dc-evento-cat' }, ev.categoria) : null,
+        h('strong', { class: 'dc-evento-titulo' }, ev.titulo || '—'),
+        h('div', { class: 'dc-evento-sub' }, ev.subtitulo || ''),
+        h('div', { class: 'dc-evento-periodo' }, icone('calendario', { tamanho: 16 }), `${data(ev.inicio)} até ${data(ev.fim)}`),
+        desc ? h('p', { class: 'dc-evento-desc' }, curto(desc, 220)) : null,
+        desc.length > 220 ? h('button', { type: 'button', class: 'dc-link', onclick: () => abrirFolha({ titulo: 'Descrição do evento', conteudo: h('p', { class: 'dc-texto-folha' }, desc) }) }, 'Ler a descrição inteira') : null)),
+    h('div', { class: 'dc-etiqueta exata' }, icone('escudo', { tamanho: 16 }), 'Capa e textos exatos — é assim que vai aparecer no Roblox'),
+    l.eventoRoblox?.link ? h('a', { class: 'dc-link', href: l.eventoRoblox.link, target: '_blank', rel: 'noopener' }, icone('roblox', { tamanho: 16 }), 'Ver o evento no Roblox') : null);
+}
 const pacoteEhImagem = l => /^builds\/[a-z0-9-]+\.(png|jpe?g)$/i.test(l.artefato?.caminho || '');
 
 // Categoria da proposta (regra da semana: 3 entretenimento, 2 crescimento, 1 otimização, 1 correção).
@@ -339,6 +369,11 @@ function confirmarDecisao(p, acao, fecharModal) {
 // ------------------------------------------------------------------ lançamentos (autorização final)
 function quandoPublica(l) {
   const cfg = dados().config || {};
+  if (ehEvento(l) && l.evento?.inicio) {
+    const i = l.evento.inicio;
+    const dia = `${diaSemana(i.slice(0, 10))}, ${dataCurta(i.slice(0, 10))}`;
+    return { dia, hora: i.slice(11, 16), texto: `Começa ${dia} às ${i.slice(11, 16)}` };
+  }
   const hora = cfg.horarioPublicacao || null;
   const dia = l.dataAlvo ? `${diaSemana(l.dataAlvo)}, ${dataCurta(l.dataAlvo)}` : (cfg.diaPublicacao === 'domingo' ? 'Próximo domingo' : 'Próximo sábado');
   return { dia, hora, texto: `${dia}${hora ? ` às ${hora}` : ''}` };
@@ -349,6 +384,7 @@ const tamanhoMB = b => (Number.isFinite(b) ? `${(b / 1048576).toLocaleString('pt
 
 /** Mostra o que será publicado: a imagem exata (thumbnail) ou o arquivo do jogo + imagens das ideias incluídas. */
 function midiaDoLancamento(l, grande = true) {
+  if (ehEvento(l)) return previaEvento(l, grande);
   if (pacoteEhImagem(l)) {
     return h('div', { class: 'dc-heroi-bloco' },
       h('div', { class: 'dc-heroi' }, moldura(grande ? 'dc-midia-heroi' : 'dc-midia-card', 'thumbnail', imagemPacote(l))),
@@ -401,11 +437,11 @@ function cardAutorizacao(l) {
   card.append(...[
     h('header', { class: 'dc-aut-topo' },
       h('div', { class: 'dc-aut-selo' }, icone('assinatura', { tamanho: 22 })),
-      h('div', {}, h('div', { class: 'dc-aut-sobre' }, 'Sua autorização'), h('h3', {}, l.tipo === 'thumbnail' ? 'Nova thumbnail para o jogo' : 'Atualização do jogo')),
+      h('div', {}, h('div', { class: 'dc-aut-sobre' }, 'Sua autorização'), h('h3', {}, tituloLanc(l, true))),
       seloStatus(l.status)),
     midiaDoLancamento(l),
     h('div', { class: 'dc-aut-fatos' },
-      h('div', { class: 'dc-fato' }, icone('calendario', { tamanho: 22 }), h('div', {}, h('div', { class: 'dc-fato-rot' }, 'Vai para o jogo'), h('strong', {}, q.dia), q.hora ? h('div', { class: 'dc-fato-sub' }, `às ${q.hora} (Brasília)`) : null)),
+      h('div', { class: 'dc-fato' }, icone('calendario', { tamanho: 22 }), h('div', {}, h('div', { class: 'dc-fato-rot' }, ehEvento(l) ? 'Começa' : 'Vai para o jogo'), h('strong', {}, q.dia), q.hora ? h('div', { class: 'dc-fato-sub' }, `às ${q.hora} (Brasília)${ehEvento(l) ? ' · fica 7 dias' : ''}`) : null)),
       h('div', { class: `dc-fato ${testesOk ? 'ok' : 'bad'}` }, icone(testesOk ? 'qualidade' : 'alerta', { tamanho: 22 }), h('div', {}, h('div', { class: 'dc-fato-rot' }, 'Testes'), h('strong', {}, testesOk ? 'Aprovados' : 'Não aprovados'),
         l.testes?.detalhes ? h('button', { type: 'button', class: 'dc-link', onclick: () => abrirFolha({ titulo: 'Testes feitos', conteudo: h('p', { class: 'dc-texto-folha' }, l.testes.detalhes) }) }, 'Ver testes') : null))),
     h('section', { class: 'dc-muda' }, h('h4', { class: 'dc-sub' }, icone('raio', { tamanho: 18 }), 'O que vai mudar'),
@@ -440,7 +476,7 @@ function confirmarAutorizacao(l, coment) {
       });
       return h('div', { class: 'dc-confirma' },
         h('div', { class: 'dc-confirma-icone amarelo' }, icone('foguete', { tamanho: 30 })),
-        h('p', { class: 'dc-confirma-texto' }, `Esta versão vai para o jogo ${q.dia.toLowerCase()}${q.hora ? ` às ${q.hora}` : ''}.`),
+        h('p', { class: 'dc-confirma-texto' }, ehEvento(l) ? `O evento é criado na página do jogo logo depois desta autorização e começa ${q.dia.toLowerCase()}${q.hora ? ` às ${q.hora}` : ''}.` : `Esta versão vai para o jogo ${q.dia.toLowerCase()}${q.hora ? ` às ${q.hora}` : ''}.`),
         h('div', { class: 'dc-confirma-codigo' }, 'Vale só para o código ', h('strong', {}, codigoPacote(l)), '. Se o arquivo mudar, esta autorização deixa de valer sozinha.'),
         h('div', { class: 'dc-confirma-botoes' }, ok, voltar));
     },
@@ -492,11 +528,11 @@ function folhaLancamento(l) {
 function cardLancamentoCompacto(l) {
   const q = quandoPublica(l);
   const incl = (l.propostaIds || []).map(id => propostas().find(p => p.id === id)).filter(Boolean);
-  const mini = pacoteEhImagem(l) ? moldura('dc-midia-card', 'thumbnail', imagemPacote(l)) : incl[0] ? miniaturaProposta(incl[0]) : moldura('dc-midia-card', 'roblox', null);
+  const mini = pacoteEhImagem(l) ? moldura('dc-midia-card', ehEvento(l) ? 'evento' : 'thumbnail', imagemPacote(l)) : incl[0] ? miniaturaProposta(incl[0]) : moldura('dc-midia-card', 'roblox', null);
   return h('button', { type: 'button', class: 'dc-card-proposta', onclick: () => abrirLancamento(l.id), 'aria-label': `Abrir publicação ${l.id}` },
     mini,
     h('div', { class: 'dc-card-corpo' },
-      h('div', { class: 'dc-card-chips' }, seloStatus(l.status), chip(l.tipo === 'thumbnail' ? 'Thumbnail' : 'Jogo', { iconeNome: l.tipo === 'thumbnail' ? 'thumbnail' : 'roblox' })),
+      h('div', { class: 'dc-card-chips' }, seloStatus(l.status), chipTipoLanc(l)),
       h('h3', { class: 'dc-card-titulo' }, curto((l.changelog || [])[0] || l.id, 80)),
       h('p', { class: 'dc-card-resumo' }, `${l.id} · código ${codigoPacote(l) || '—'}`),
       h('div', { class: 'dc-card-pe' }, h('span', { class: 'dc-pe-data' }, icone('calendario', { tamanho: 16 }), l.publicadoEm ? `Publicada ${dataCurta(l.publicadoEm)}` : q.texto), h('span', { class: 'dc-pe-abrir' }, 'Ver', icone('direita', { tamanho: 18 })))));
@@ -508,13 +544,13 @@ function abrirLancamento(id) {
   const q = quandoPublica(l);
   const a = l.autorizacao?.dados;
   abrirModal({
-    titulo: l.tipo === 'thumbnail' ? 'Thumbnail' : 'Atualização do jogo',
+    titulo: tituloLanc(l),
     classe: 'dc-modal',
     conteudo: h('div', { class: 'dc-detalhe' },
       midiaDoLancamento(l),
       h('div', { class: 'dc-card-chips' }, seloStatus(l.status), chip(l.id, { iconeNome: 'foguete' })),
       h('div', { class: 'dc-aut-fatos' },
-        h('div', { class: 'dc-fato' }, icone('calendario', { tamanho: 22 }), h('div', {}, h('div', { class: 'dc-fato-rot' }, l.publicadoEm ? 'Publicada em' : 'Vai para o jogo'), h('strong', {}, l.publicadoEm ? dataHora(l.publicadoEm) : q.dia), !l.publicadoEm && q.hora ? h('div', { class: 'dc-fato-sub' }, `às ${q.hora}`) : null)),
+        h('div', { class: 'dc-fato' }, icone('calendario', { tamanho: 22 }), h('div', {}, h('div', { class: 'dc-fato-rot' }, l.publicadoEm ? 'Publicada em' : ehEvento(l) ? 'Começa' : 'Vai para o jogo'), h('strong', {}, l.publicadoEm ? dataHora(l.publicadoEm) : q.dia), !l.publicadoEm && q.hora ? h('div', { class: 'dc-fato-sub' }, `às ${q.hora}`) : null)),
         h('div', { class: `dc-fato ${a ? 'ok' : ''}` }, icone('assinatura', { tamanho: 22 }), h('div', {}, h('div', { class: 'dc-fato-rot' }, 'Sua autorização'), h('strong', {}, a ? 'Assinada' : 'Ainda não'), a ? h('div', { class: 'dc-fato-sub' }, `vale até ${dataCurta(a.expiraEm)}`) : null))),
       h('section', { class: 'dc-muda' }, h('h4', { class: 'dc-sub' }, icone('raio', { tamanho: 18 }), 'O que muda'),
         (l.changelog || []).length ? h('ul', { class: 'dc-checks' }, l.changelog.map(c => h('li', {}, icone('ok', { tamanho: 16 }), h('span', {}, c)))) : h('p', { class: 'dc-fraco' }, '—')),

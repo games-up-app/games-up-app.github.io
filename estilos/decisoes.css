@@ -265,3 +265,17 @@
 .dc-meta-topo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .dc-meta-topo .dc-fraco { margin-left: auto; font-size: .85rem; }
 .dc-filtro { white-space: nowrap; }
+
+/* ---------- evento na página do jogo (prévia igual à da Roblox) ---------- */
+.dc-evento { display: grid; gap: 12px; padding: 12px; border-radius: var(--dc-raio); background: #1b1c1f; color: #f2f2f2; border: 1.5px solid #2c2d31; min-width: 0; }
+.dc-evento-capa { position: relative; min-width: 0; }
+.dc-evento-capa .dc-midia-heroi, .dc-evento-capa .dc-midia-card { border-radius: 12px; overflow: hidden; }
+.dc-evento-data { position: absolute; top: 10px; left: 10px; background: #fff; color: #1b1b1a; font-weight: 750; font-size: .78rem; padding: 4px 10px; border-radius: 999px; }
+.dc-evento-corpo { display: grid; gap: 4px; min-width: 0; }
+.dc-evento-cat { justify-self: start; font-size: .75rem; font-weight: 750; padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,.12); }
+.dc-evento-titulo { font-size: 1.15rem; font-weight: 850; overflow-wrap: anywhere; }
+.dc-evento-sub { font-size: .8rem; font-weight: 750; text-transform: uppercase; letter-spacing: .03em; color: #c9c9cf; overflow-wrap: anywhere; }
+.dc-evento-periodo { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: #c9c9cf; margin-top: 4px; }
+.dc-evento-desc { margin: 6px 0 0; font-size: .9rem; line-height: 1.4; white-space: pre-line; overflow-wrap: anywhere; color: #e4e4e8; }
+.dc-evento .dc-link { color: #9fc3ff; }
+@media (min-width: 900px) { .dc-evento { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: start; } }

@@ -148,7 +148,8 @@ export function decidirLancamento(lancs, propostas, usuario, { lancamentoId, aca
     l.status = STATUS.DEVOLVIDA;
     // Mesmo sem trocar o arquivo, a assinatura anterior não pode voltar a valer.
     l.versao = (l.versao || 0) + 1;
-    for (const id of l.propostaIds || []) {
+    // Evento só anuncia a atualização: devolver refaz capa/textos, não reabre as propostas.
+    for (const id of l.tipo === 'evento' ? [] : l.propostaIds || []) {
       const p = propostas.propostas.find(x => x.id === id);
       if (!p || !APROVADAS_PARA_DEV.includes(p.status) || !p.decisoes?.some(d => d.acao === 'aprovar' && d.versao === p.versao)) continue;
       const de = p.status;
