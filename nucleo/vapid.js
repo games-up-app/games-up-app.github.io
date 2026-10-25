@@ -1,16 +1,23 @@
-// Chaves das notificações (VAPID). Na primeira ativação o painel cria o par de chaves
-// e guarda nas variáveis do repositório privado; os agendamentos do GitHub usam essas
-// variáveis para enviar as notificações ao celular.
-const b64u = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+// O navegador recebe somente a chave PÚBLICA. O par é configurado pelo servidor;
+// ativar notificações nunca cria chaves nem acessa variáveis do GitHub.
+export function chaveParaBytes(publica) {
+  if (typeof publica !== 'string' || !/^[A-Za-z0-9_-]{87}$/.test(publica)) throw new Error('Configuração das notificações inválida.');
+  const binario = atob(publica.replace(/-/g, '+').replace(/_/g, '/') + '=');
+  const bytes = Uint8Array.from(binario, c => c.charCodeAt(0));
+  if (bytes.length !== 65 || bytes[0] !== 4) throw new Error('Configuração das notificações inválida.');
+  return bytes;
+}
 
-export async function chavePublicaVapid(repo) {
-  const existente = await repo.lerVariavel('VAPID_PUBLIC_KEY');
-  if (existente) return existente;
-  const par = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
-  const jwk = await crypto.subtle.exportKey('jwk', par.privateKey);
-  const publica = b64u(await crypto.subtle.exportKey('raw', par.publicKey));
-  const privada = JSON.stringify({ kty: jwk.kty, crv: jwk.crv, x: jwk.x, y: jwk.y, d: jwk.d });
-  await repo.gravarVariavel('VAPID_PRIVATE_KEY', privada);
-  await repo.gravarVariavel('VAPID_PUBLIC_KEY', publica);
-  return publica;
+export async function chavePublicaVapid({ fetchImpl = globalThis.fetch, url = new URL('../push-config.json', import.meta.url) } = {}) {
+  let resposta;
+  try { resposta = await fetchImpl(url, { cache: 'no-store', credentials: 'same-origin' }); }
+  catch { throw new Error('Não consegui carregar a configuração das notificações. Tente novamente.'); }
+  if (!resposta.ok) throw new Error('As notificações ainda não estão configuradas. Tente novamente mais tarde.');
+  let config;
+  try { config = await resposta.json(); } catch { throw new Error('Configuração das notificações inválida.'); }
+  if (!config || config.versao !== 1 || Object.keys(config).some(c => !['versao', 'publicKey'].includes(c))) throw new Error('Configuração das notificações inválida.');
+  const bytes = chaveParaBytes(config.publicKey);
+  try { await crypto.subtle.importKey('raw', bytes, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']); }
+  catch { throw new Error('Configuração das notificações inválida.'); }
+  return config.publicKey;
 }

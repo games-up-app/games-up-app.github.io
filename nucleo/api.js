@@ -3,7 +3,7 @@
 // privado (RepoGitHub) com o token do proprietário. Quem tem o token é o proprietário.
 import { ErroRegra, STATUS, decidirProposta, comentar, atualizarTarefa, decidirLancamento, alterarConfig } from './regras.js';
 
-const ARQUIVOS = ['meta', 'metricas', 'thumbnails', 'propostas', 'tarefas', 'tendencias', 'discord', 'lancamentos', 'comentarios', 'config', 'saude-agendamentos', 'relatorios/indice', 'executor'];
+const ARQUIVOS = ['meta', 'metricas', 'thumbnails', 'propostas', 'tarefas', 'tendencias', 'discord', 'lancamentos', 'comentarios', 'config', 'saude-agendamentos', 'relatorios/indice', 'executor', 'push/inscricoes'];
 
 function mes(d) { return d.toISOString().slice(0, 7); }
 
@@ -44,7 +44,7 @@ export function criarApi({ store, usuario, assinar = null }) {
       const anterior = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1));
       const caminhos = [...ARQUIVOS.map(a => `${a}.json`), `auditoria/${mes(anterior)}.json`, `auditoria/${mes(d)}.json`];
       const lidos = await store.lerVarios(caminhos);
-      const dados = Object.fromEntries(ARQUIVOS.map(a => [a.replace('relatorios/', 'relatorios_'), lidos[`${a}.json`]]));
+      const dados = Object.fromEntries(ARQUIVOS.map(a => [a.replaceAll('/', '_'), lidos[`${a}.json`]]));
       dados.auditoria = [...(lidos[caminhos.at(-2)]?.eventos || []), ...(lidos[caminhos.at(-1)]?.eventos || [])];
       const ult = dados.relatorios_indice?.relatorios?.at(-1);
       if (ult) dados.relatorioAtual = await store.ler(`relatorios/${ult.arquivo}`);

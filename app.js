@@ -7,6 +7,7 @@ import { RepoGitHub } from './nucleo/github.js';
 import { criarApi } from './nucleo/api.js';
 import { lerToken, gravarToken, esquecerToken, chaveDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js';
 import { chavePublicaVapid } from './nucleo/vapid.js';
+import { ativarNoAparelho, notificacoesAtivas } from './nucleo/notificacoes.js';
 import { classificarThumbnail, thumbnailsProtegidas } from './nucleo/estatistica.js';
 
 const estado = { usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null };
@@ -183,6 +184,9 @@ async function entrar(token) {
 async function carregar() {
   const p = await api('/api/painel');
   estado.usuario = p.usuario; estado.dados = p.dados;
+  estado.pushAtivo = null;
+  render();
+  await conferirNotificacoes();
   render();
 }
 
@@ -836,16 +840,22 @@ window.addEventListener('appinstalled', () => { pedidoInstalacao = null; avisar(
 const instalado = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 const ehIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 
-function chaveParaBytes(b64) {
-  const p = '='.repeat((4 - (b64.length % 4)) % 4);
-  const bin = atob((b64 + p).replace(/-/g, '+').replace(/_/g, '/'));
-  return Uint8Array.from(bin, c => c.charCodeAt(0));
-}
-
 async function inscricaoAtual() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
   const reg = await navigator.serviceWorker.ready;
   return reg.pushManager.getSubscription();
+}
+
+async function conferirNotificacoes() {
+  estado.pushAtivo = false;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
+  try {
+    const publica = await chavePublicaVapid();
+    estado.pushAtivo = await notificacoesAtivas({
+      registration: navigator.serviceWorker.getRegistration(), permission: Notification.permission,
+      publicKey: publica, inscricoes: estado.dados?.push_inscricoes, usuarioId: estado.usuario?.id,
+    });
+  } catch { estado.pushAtivo = false; }
 }
 
 async function ativarNotificacoes(btn) {
@@ -855,15 +865,14 @@ async function ativarNotificacoes(btn) {
   }
   btn.disabled = true;
   try {
-    if (await Notification.requestPermission() !== 'granted') throw new Error('Permissão negada. Libere nas configurações do navegador.');
-    const publica = await chavePublicaVapid(estado.repo);
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chaveParaBytes(publica) });
-    await api('/api/push/inscrever', { method: 'POST', body: JSON.stringify({ inscricao: sub.toJSON() }) });
-    estado.pushAtivo = true;
-    avisar('Notificações ativadas neste aparelho.');
-    render();
+    await ativarNoAparelho({
+      registration: navigator.serviceWorker.ready, notification: Notification, carregarChave: chavePublicaVapid,
+      cadastrar: inscricao => api('/api/push/inscrever', { method: 'POST', body: JSON.stringify({ inscricao }) }),
+    });
+    await carregar();
+    avisar('Aparelho cadastrado para receber notificações.');
   } catch (e) {
+    estado.pushAtivo = false;
     avisar(`Não ativado: ${e.message}`, true);
     btn.disabled = false;
   }
@@ -874,6 +883,7 @@ async function desativarNotificacoes(btn) {
   try {
     const sub = await inscricaoAtual();
     if (sub) { await api('/api/push/cancelar', { method: 'POST', body: JSON.stringify({ endpoint: sub.endpoint }) }); await sub.unsubscribe(); }
+    await carregar();
     estado.pushAtivo = false;
     avisar('Notificações desativadas neste aparelho.');
     render();
@@ -881,10 +891,6 @@ async function desativarNotificacoes(btn) {
 }
 
 function celular(sempre = false) {
-  if (estado.pushAtivo === undefined) {
-    estado.pushAtivo = null;
-    inscricaoAtual().then(s => { estado.pushAtivo = !!s; render(); }).catch(() => { estado.pushAtivo = false; });
-  }
   const pronto = instalado() && estado.pushAtivo;
   if (pronto && !sempre) return null;
   const blocos = [];
@@ -903,10 +909,12 @@ function celular(sempre = false) {
   if (estado.pushAtivo) {
     const teste = h('button', { class: 'btn', onclick: async () => {
       const reg = await navigator.serviceWorker.ready;
-      await reg.showNotification('Games Up', { body: 'Assim chegam os avisos da automação.', icon: 'icones/icone-192.png', lang: 'pt-BR' });
-    } }, 'Ver exemplo');
+      await reg.showNotification('Games Up', { body: 'Exemplo local deste aparelho. Não testa o envio da automação.', icon: 'icones/icone-192.png', lang: 'pt-BR' });
+    } }, 'Ver exemplo local');
     const off = h('button', { class: 'btn', onclick: () => desativarNotificacoes(off) }, 'Desativar');
     blocos.push(h('p', { class: 'ok-linha' }, icone('check'), 'Notificações ligadas neste aparelho.'), h('div', { class: 'acoes' }, teste, off));
+  } else if (estado.pushAtivo == null) {
+    blocos.push(h('p', { class: 'sinc' }, 'Conferindo notificações deste aparelho…'));
   } else if (estado.pushAtivo === false) {
     const b = h('button', { class: 'btn primario', onclick: () => ativarNotificacoes(b) }, 'Ativar notificações');
     blocos.push(h('p', { class: 'sinc' }, 'Você recebe um aviso quando: chega proposta nova, tem atualização pronta para autorizar, sai o relatório da semana ou algo falha.'), h('div', { class: 'acoes' }, b));
