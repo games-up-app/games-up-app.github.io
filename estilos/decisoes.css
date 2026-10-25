@@ -279,3 +279,6 @@
 .dc-evento-desc { margin: 6px 0 0; font-size: .9rem; line-height: 1.4; white-space: pre-line; overflow-wrap: anywhere; color: #e4e4e8; }
 .dc-evento .dc-link { color: #9fc3ff; }
 @media (min-width: 900px) { .dc-evento { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); align-items: start; } }
+
+/* ---------- ideia do dono ainda sendo preparada ---------- */
+.dc-card-ideia { border-style: dashed; border-color: color-mix(in srgb, var(--brand) 55%, var(--border)); }

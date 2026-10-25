@@ -241,12 +241,28 @@ function cardProposta(p) {
   return h('button', { type: 'button', class: `dc-card-proposta${decidivel ? ' pede-voce' : ''}`, onclick: () => abrirProposta(p.id), 'aria-label': `Abrir proposta ${p.id}: ${p.titulo}` },
     miniaturaProposta(p),
     h('div', { class: 'dc-card-corpo' },
-      h('div', { class: 'dc-card-chips' }, seloStatus(p.status), chip(p.id, { iconeNome: iconeDoTipo(p.tipo) }), chipCategoria(p), p.mudaDesign ? chip('Muda o visual', { tom: 'quente', iconeNome: 'pincel' }) : null),
+      h('div', { class: 'dc-card-chips' }, seloStatus(p.status), chip(p.id, { iconeNome: iconeDoTipo(p.tipo) }), p.ideiaId ? chip('Sua ideia', { tom: 'relevante', iconeNome: 'lampada' }) : null, chipCategoria(p), p.mudaDesign ? chip('Muda o visual', { tom: 'quente', iconeNome: 'pincel' }) : null),
       h('h3', { class: 'dc-card-titulo' }, p.titulo),
       h('p', { class: 'dc-card-resumo' }, curto(p.resumo || p.descricao, 110)),
       h('div', { class: 'dc-card-pe' },
         p.semanaAlvo ? h('span', { class: 'dc-pe-data' }, icone('calendario', { tamanho: 16 }), `Previsto ${dataCurta(p.semanaAlvo)}`) : h('span'),
         h('span', { class: 'dc-pe-abrir' }, decidivel && ehDono() ? 'Decidir' : 'Ver', icone('direita', { tamanho: 18 })))));
+}
+
+/** Ideia que o dono mandou pelo celular e a equipe ainda está transformando em proposta. */
+function cardIdeiaPreparando(i) {
+  const respostas = i.respostas || [];
+  return h('button', { type: 'button', class: 'dc-card-proposta dc-card-ideia', 'aria-label': `Sua ideia: ${i.titulo}`,
+    onclick: () => abrirFolha({ titulo: i.titulo, conteudo: h('div', { class: 'dc-folha-det' },
+      h('p', { class: 'dc-texto-folha' }, i.texto),
+      h('div', { class: 'dc-alerta' }, icone('relogio', { tamanho: 20 }), h('div', {}, 'A equipe está transformando sua ideia em proposta: imagem, o que muda e o porquê. Quando ficar pronta, ela aparece aqui para você decidir.')),
+      respostas.length ? h('p', { class: 'dc-fraco' }, `Último retorno: ${respostas.at(-1).texto}`) : null) }) },
+    moldura('dc-midia-card', 'lampada', null),
+    h('div', { class: 'dc-card-corpo' },
+      h('div', { class: 'dc-card-chips' }, chip('Sua ideia', { tom: 'relevante', iconeNome: 'lampada' }), chip(i.status === 'analise' ? 'Em análise' : 'Sendo preparada', { iconeNome: 'relogio' })),
+      h('h3', { class: 'dc-card-titulo' }, curto(i.titulo, 80)),
+      h('p', { class: 'dc-card-resumo' }, curto(i.texto, 110)),
+      h('div', { class: 'dc-card-pe' }, h('span', { class: 'dc-pe-data' }, icone('calendario', { tamanho: 16 }), `Enviada ${dataCurta(i.criadaEm)}`), h('span', { class: 'dc-pe-abrir' }, 'Ver', icone('direita', { tamanho: 18 })))));
 }
 
 function abrirProposta(id) {
@@ -590,8 +606,12 @@ export function telaDecisoes() {
   const lista = base.filter(grupos[filtro]);
   const explicacao = SUBABAS.find(s => s[0] === filtro)[2];
 
+  // Ideias do dono ainda sem proposta aparecem já em "Em aberto", antes das propostas.
+  const preparando = area === 'ideias' && filtro === 'aberto' ? (dados().ideias?.itens || []).filter(i => ['nova', 'analise'].includes(i.status)).reverse() : [];
   let conteudo;
-  if (!lista.length) {
+  if (preparando.length) {
+    conteudo = h('div', { class: 'dc-grade-cards' }, preparando.map(cardIdeiaPreparando), lista.map(cardProposta));
+  } else if (!lista.length) {
     const msgs = {
       ideias: { aberto: 'Nenhuma ideia esperando você. Novas propostas chegam toda terça.' },
       publicacoes: { aberto: 'Nada para autorizar agora. Quando um pacote ficar pronto, ele aparece aqui.' },
