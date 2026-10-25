@@ -347,7 +347,7 @@ function abrirProposta(id) {
     } : podeAdiantar(p) ? fechar => {
       if (ehHoje(p)) {
         return h('div', { class: 'dc-rodape-decisao' },
-          h('div', { class: 'dc-alerta' }, icone('raio', { tamanho: 20 }), h('div', {}, h('strong', {}, `Marcada para hoje, meta ${p.fazerHoje.horario}. `), 'A equipe faz esta primeiro; você autoriza o pacote e ele vai para o jogo na hora.')),
+          h('div', { class: 'dc-alerta' }, icone('raio', { tamanho: 20 }), h('div', {}, h('strong', {}, `Marcada para hoje às ${p.fazerHoje.horario}. `), 'A equipe faz esta primeiro; você autoriza o pacote e ele vai para o jogo sozinho nesse horário.')),
           botaoDc('Voltar para a data normal', { classe: 'dc-btn-claro', iconeNome: 'calendario', onclick: () => desfazerHoje(p, fechar) }));
       }
       return h('div', { class: 'dc-rodape-decisao' }, botaoDc('Fazer hoje', { classe: 'dc-btn-amarelo dc-btn-grande', iconeNome: 'raio', onclick: () => folhaFazerHoje(p, { fecharModal: fechar }) }));
@@ -383,10 +383,10 @@ function folhaFazerHoje(p, { aprovarAntes = false, fecharModal } = {}) {
       });
       return h('div', { class: 'dc-confirma' },
         h('div', { class: 'dc-confirma-icone amarelo' }, icone('raio', { tamanho: 30 })),
-        h('p', { class: 'dc-confirma-texto' }, 'A equipe passa esta na frente de tudo e entrega um pacote só dela. Quando ficar pronto, você recebe o aviso, autoriza com o código e ela vai para o jogo na hora — sem esperar o dia normal de publicação.'),
+        h('p', { class: 'dc-confirma-texto' }, 'A equipe passa esta na frente de tudo e entrega um pacote só dela. Quando ficar pronto, você recebe o aviso e autoriza com o código; ela vai para o jogo sozinha no horário escolhido (se autorizar depois, sai na hora) — sem esperar o dia normal de publicação.'),
         h('div', { class: 'dc-confirma-alvo' }, miniaturaProposta(p, 'dc-midia-mini'), h('div', {}, h('strong', {}, p.titulo), h('div', { class: 'dc-fraco' }, `${p.id} · versão ${p.versao}`))),
-        h('label', { class: 'dc-rotulo', for: `dc-hoje-${p.id}` }, 'Meta de horário (Brasília)'), hora, erro,
-        h('p', { class: 'dc-fraco' }, 'É uma meta: se não der tempo com qualidade, a equipe avisa no app em vez de entregar com pressa.'),
+        h('label', { class: 'dc-rotulo', for: `dc-hoje-${p.id}` }, 'Horário de publicação (Brasília)'), hora, erro,
+        h('p', { class: 'dc-fraco' }, 'Depois da sua autorização, o jogo atualiza sozinho neste horário. Se não der tempo com qualidade, a equipe avisa no app em vez de entregar com pressa.'),
         h('div', { class: 'dc-confirma-botoes' }, ok, voltar));
     },
   });
@@ -454,8 +454,8 @@ function confirmarDecisao(p, acao, fecharModal) {
 // ------------------------------------------------------------------ lançamentos (autorização final)
 function quandoPublica(l) {
   const cfg = dados().config || {};
-  // "Fazer hoje": sai assim que o dono autoriza (o horário é só a meta combinada).
-  if (l.urgente) return { dia: 'Hoje, assim que você autorizar', hora: null, texto: `Hoje · meta ${l.horario || '—'}` };
+  // "Fazer hoje": vai para o jogo sozinho no horário escolhido (se autorizar depois, sai na hora).
+  if (l.urgente) return { dia: 'Hoje', hora: l.horario || null, texto: l.horario ? `Hoje às ${l.horario}` : 'Hoje, ao autorizar' };
   if (ehEvento(l) && l.evento?.inicio) {
     const i = l.evento.inicio;
     const dia = `${diaSemana(i.slice(0, 10))}, ${dataCurta(i.slice(0, 10))}`;
@@ -563,7 +563,7 @@ function confirmarAutorizacao(l, coment) {
       });
       return h('div', { class: 'dc-confirma' },
         h('div', { class: 'dc-confirma-icone amarelo' }, icone('foguete', { tamanho: 30 })),
-        h('p', { class: 'dc-confirma-texto' }, ehEvento(l) ? `O evento é criado na página do jogo logo depois desta autorização e começa ${q.dia.toLowerCase()}${q.hora ? ` às ${q.hora}` : ''}.` : `Esta versão vai para o jogo ${q.dia.toLowerCase()}${q.hora ? ` às ${q.hora}` : ''}.`),
+        h('p', { class: 'dc-confirma-texto' }, ehEvento(l) ? `O evento é criado na página do jogo logo depois desta autorização e começa ${q.dia.toLowerCase()}${q.hora ? ` às ${q.hora}` : ''}.` : `Esta versão vai para o jogo ${q.dia.toLowerCase()}${q.hora ? ` às ${q.hora}` : ''}, sozinha.${l.urgente && q.hora ? ' Se você autorizar depois desse horário, ela sai na hora.' : ''}`),
         h('div', { class: 'dc-confirma-codigo' }, 'Vale só para o código ', h('strong', {}, codigoPacote(l)), '. Se o arquivo mudar, esta autorização deixa de valer sozinha.'),
         h('div', { class: 'dc-confirma-botoes' }, ok, voltar));
     },

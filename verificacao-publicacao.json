@@ -1,5 +1,5 @@
 {
-  "revisao": "28c70aaaa4b136bf2ce6f9d5f32d4eaf353ea7f4",
+  "revisao": "94337c2670f6aa76c2d44ef03232218a11f6e9e8",
   "arquivos": {
     "aparelhos-autorizados.json": "50481e94f491dbc3bcc8797aede84768ecd12a5a1094365057ad6d882f88a1cf",
     "app.js": "b2dfeb721799f119a0448090e77c6d9343d509e1b8ab5d270ecc7eae06dd33f4",
@@ -38,7 +38,7 @@
     "telas/ajustes.js": "7b86d09bca6106fc30c18b01ca63493923c169ecda385d4b5f767088c98bd136",
     "telas/andamento.js": "5f6892363dba8bd39d5f05a2f7406ef3eb128ae044acd3ad694e1fc61f6b5256",
     "telas/comum.js": "7f3f4aeddeae03fa7d8ba332ef3c6abff4d72d91c9383283c7c07438f7505319",
-    "telas/decisoes.js": "9acbcc7c1ed18fc44d956ff6e32286fc402a537247271e5f75655545e0a54dd6",
+    "telas/decisoes.js": "e291d2875b5c87b6c2aaefd49bb388b7a441ab0c2a7be13f06d3af9b66c60f2b",
     "telas/ideias.js": "b5d27e6569d54aae95da52f785698c98437153fb2b7b7207b4f627f5ec223af8",
     "telas/inicio.js": "891c3f5a1d6c62e017a91faa0d3842efac12487f54c2e02ea6cf82fdc16853d4",
     "telas/numeros.js": "dcf8d131856bdc6bc7ff950c68024d1c9f7a64975bd3b6981fb8185c516a7416",
