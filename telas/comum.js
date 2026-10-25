@@ -79,7 +79,7 @@ export function miniaturaIcone(nomeIcone, tom = 'roxo', classe = '') {
 
 // ------------------------------------------------------------------ status
 const ROTULOS = {
-  'PROPOSTA': 'Em preparo', 'AGUARDANDO APROVAÇÃO': 'Esperando você', 'ADIADA': 'Adiada',
+  'PROPOSTA': 'Em preparo', 'AGUARDANDO APROVAÇÃO': 'Esperando decisão', 'ADIADA': 'Adiada',
   'APROVADA PARA DESENVOLVIMENTO': 'Aprovada', 'REJEITADA': 'Rejeitada', 'DEVOLVIDA PARA AJUSTES': 'Voltou para ajustes',
   'EM DESENVOLVIMENTO': 'Sendo feita', 'EM TESTES': 'Em testes', 'AGUARDANDO AUTORIZAÇÃO FINAL': 'Esperando sua autorização',
   'APROVADA PARA PUBLICAÇÃO': 'Autorizada', 'PUBLICADA': 'Publicada', 'BLOQUEADA': 'Bloqueada',

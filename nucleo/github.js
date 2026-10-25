@@ -68,10 +68,30 @@ export class RepoGitHub {
   }
 
   /** Confere se o token enxerga o repositório de dados e pode gravar nele. */
-  async conferirAcesso() {
+  /** Confere se o token enxerga o repositório. O dono precisa poder gravar; a equipe só lê. */
+  async conferirAcesso({ exigirEscrita = true } = {}) {
     const r = await this.req('GET', `/repos/${this.repo}`);
-    if (!r) throw new ErroGitHub(404, `O token não enxerga o repositório ${this.repo}. Ao criar o token, escolha esse repositório.`);
-    if (r.permissions && !r.permissions.push) throw new ErroGitHub(403, 'O token só tem leitura. Ele precisa de "Contents: Read and write".');
+    if (!r) throw new ErroGitHub(404, `O token não enxerga o repositório ${this.repo}. Ao criar o token, escolha "games-up-app" em Resource owner e marque esse repositório.`);
+    if (exigirEscrita && r.permissions && !r.permissions.push) throw new ErroGitHub(403, 'O token só tem leitura. O dono precisa de "Contents: Read and write".');
+    return r;
+  }
+
+  // ---- comentários da equipe (tópico de Issues: quem só lê os dados ainda pode comentar)
+  async lerComentariosEquipe(numero) {
+    if (!Number.isInteger(numero) || numero < 1) return [];
+    const todos = [];
+    for (let pagina = 1; pagina <= 5; pagina++) {
+      const lote = await this.req('GET', `/repos/${this.repo}/issues/${numero}/comments?per_page=100&page=${pagina}`);
+      if (!Array.isArray(lote)) break;
+      todos.push(...lote);
+      if (lote.length < 100) break;
+    }
+    return todos.map(c => ({ id: c.id, login: c.user?.login || '?', texto: c.body || '', em: c.created_at }));
+  }
+
+  async comentarEquipe(numero, texto) {
+    const r = await this.req('POST', `/repos/${this.repo}/issues/${numero}/comments`, { body: texto });
+    if (!r?.id) throw new ErroGitHub(500, 'O comentário não foi gravado.');
     return r;
   }
 

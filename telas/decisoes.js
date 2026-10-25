@@ -19,7 +19,7 @@ const DECIDIVEIS = [ST.PROPOSTA, ST.AGUARDANDO, ST.ADIADA];
 // Rótulo curto e simples para o dono + tom da cor + ícone.
 const ROTULOS = {
   [ST.PROPOSTA]: ['Rascunho', 'neutro', 'editar'],
-  [ST.AGUARDANDO]: ['Esperando você', 'warn', 'relogio'],
+  [ST.AGUARDANDO]: ['Esperando decisão', 'warn', 'relogio'],
   [ST.ADIADA]: ['Adiada', 'neutro', 'pausa'],
   [ST.APROVADA_DEV]: ['Aprovada · em preparo', 'ok', 'ok'],
   [ST.EM_DEV]: ['Em produção', 'relevante', 'martelo'],
@@ -39,7 +39,7 @@ function seloStatus(st) {
 }
 
 const SUBABAS = [
-  ['aberto', 'Em aberto', 'Esperando a sua decisão agora.'],
+  ['aberto', 'Em aberto', 'Esperando a decisão do dono.'],
   ['autorizadas', 'Autorizadas', 'Você já autorizou; vão para o jogo na data marcada.'],
   ['concluidas', 'Concluídas', 'Já foram para o jogo ou foram recusadas.'],
   ['agendadas', 'Agendadas', 'Aprovadas e em preparo, com data prevista para ir ao jogo.'],
@@ -159,6 +159,13 @@ function cardInfo(iconeNome, titulo, texto, tom = '') {
 }
 
 function blocoChaveFaltando() {
+  // Modo Equipe: a equipe acompanha, mas só o dono autoriza (não existe chave para a equipe).
+  if (!ehDono()) {
+    return h('div', { class: 'dc-aviso-chave' },
+      h('div', { class: 'dc-aviso-icone' }, icone('escudo', { tamanho: 26 })),
+      h('div', {}, h('strong', {}, 'Só o dono autoriza publicações'),
+        h('p', {}, 'Você acompanha tudo e pode comentar. Quando o dono autorizar, a publicação aparece em "Autorizadas".')));
+  }
   return h('div', { class: 'dc-aviso-chave' },
     h('div', { class: 'dc-aviso-icone' }, icone('cadeado', { tamanho: 26 })),
     h('div', {}, h('strong', {}, 'Confirme este aparelho para autorizar'),

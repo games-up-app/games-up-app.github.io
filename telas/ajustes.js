@@ -14,7 +14,7 @@ function cartaoConta() {
   const inicial = String(u.nome || u.id || '?').trim().charAt(0).toUpperCase();
   return h('section', { class: 'card card-conta' },
     h('span', { class: 'avatar' }, inicial),
-    h('div', { class: 'conta-texto' }, h('strong', {}, u.nome || u.id), h('span', {}, `@${u.id || ''} · proprietário`)),
+    h('div', { class: 'conta-texto' }, h('strong', {}, u.nome || u.id), h('span', {}, `@${u.id || ''} · ${u.papel === 'proprietario' ? 'dono' : 'equipe'}`)),
     h('div', { class: 'conta-acoes' },
       h('button', { type: 'button', class: 'btn-icone', 'aria-label': escuro ? 'Usar tema claro' : 'Usar tema escuro', onclick: () => { ctx.alternarTema(); ctx.render(); } }, icone(escuro ? 'sol' : 'estrela', { tamanho: 20 }))));
 }
@@ -187,7 +187,23 @@ function atalhos() {
     item('jogadores', 'amarelo', 'Seu acesso', 'Token e saída deste aparelho', folhaAcesso));
 }
 
+/** Modo Equipe: explica o que a pessoa pode fazer (ver e comentar) e quem decide. */
+function cartaoEquipe() {
+  return h('section', { class: 'card' },
+    h('div', { class: 'card-cabeca' }, h('span', { class: 'resumo-icone tom-roxo' }, icone('jogadores', { tamanho: 20 })), h('h2', {}, 'Você está no modo Equipe')),
+    h('div', { class: 'lista-mini' },
+      h('div', { class: 'lista-mini-item' }, icone('olho', { tamanho: 18 }), h('span', {}, 'Ver tudo: propostas, números, notícias e pesquisas.')),
+      h('div', { class: 'lista-mini-item' }, icone('chat', { tamanho: 18 }), h('span', {}, 'Comentar nas propostas e tarefas. O dono vê na hora.')),
+      h('div', { class: 'lista-mini-item' }, icone('cadeado', { tamanho: 18 }), h('span', {}, 'Aprovar ideias, autorizar publicações e mudar ajustes é só com o dono.'))));
+}
+
 export function telaAjustes() {
+  if (ctx.estado.usuario?.papel !== 'proprietario') {
+    return h('div', { class: 'pagina-ajustes' },
+      cartaoConta(),
+      cartaoEquipe(),
+      h('button', { type: 'button', class: 'btn perigo largo', onclick: () => ctx.sair() }, icone('fechar', { tamanho: 18 }), 'Sair deste aparelho'));
+  }
   return h('div', { class: 'pagina-ajustes' },
     cartaoConta(),
     cartaoPublicacoes(),

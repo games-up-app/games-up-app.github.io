@@ -135,11 +135,18 @@ async function iniciar() {
 async function entrar(token) {
   const repo = new RepoGitHub({ token, ...CONFIG });
   const eu = await repo.usuario();
-  await repo.conferirAcesso();
+  // Só o dono aprova e autoriza. Qualquer outra pessoa entra no modo Equipe (ver e comentar).
+  const ehDonoLogin = eu.login.toLowerCase() === String(CONFIG.dono || '').toLowerCase();
+  await repo.conferirAcesso({ exigirEscrita: ehDonoLogin });
   estado.repo = repo;
-  estado.chave = await atualizarCadastroDoAparelho().catch(() => null);
-  estado.cliente = criarApi({ store: repo, usuario: { id: eu.login, nome: eu.nome }, assinar: await assinadorDoAparelho().catch(() => null) });
+  estado.chave = ehDonoLogin ? await atualizarCadastroDoAparelho().catch(() => null) : null;
+  estado.cliente = criarApi({
+    store: repo, usuario: { id: eu.login, nome: eu.nome }, papel: ehDonoLogin ? 'proprietario' : 'equipe',
+    topicoEquipe: CONFIG.topicoComentariosEquipe, dono: CONFIG.dono,
+    assinar: ehDonoLogin ? await assinadorDoAparelho().catch(() => null) : null,
+  });
   estado.usuario = estado.cliente.usuario;
+  document.documentElement.dataset.papel = estado.usuario.papel;
 }
 
 async function carregar() {

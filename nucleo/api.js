@@ -22,9 +22,27 @@ export function validarInscricao(i) {
  * @param store   RepoGitHub (ou equivalente com ler/lerVarios/transacao)
  * @param usuario { id, nome } — login do GitHub do dono do token
  * @param assinar async (dados) => assinatura base64, ou null se este aparelho ainda não tem chave
+ * @param papel   'proprietario' (aprova e autoriza) ou 'equipe' (só vê e comenta)
+ * @param topicoEquipe número do tópico de Issues onde ficam os comentários da equipe
  */
-export function criarApi({ store, usuario, assinar = null }) {
-  const eu = { id: usuario.id, nome: usuario.nome, papel: 'proprietario' };
+export function criarApi({ store, usuario, assinar = null, papel = 'proprietario', topicoEquipe = null, dono = null }) {
+  const eu = { id: usuario.id, nome: usuario.nome, papel: papel === 'equipe' ? 'equipe' : 'proprietario' };
+  // No modo Equipe só estas ações existem. O GitHub também impede: a equipe só tem leitura nos dados.
+  const PERMITIDAS_EQUIPE = new Set(['GET /api/painel', 'GET /api/relatorio', 'POST /api/comentarios']);
+  const MARCA = /^\[(proposta|tarefa|lancamento|thumbnail):([A-Za-z0-9\-_.]{1,64})\]\s*([\s\S]*)$/;
+
+  /** Comentários da equipe guardados no tópico de Issues, no mesmo formato de comentarios.json. */
+  async function comentariosDaEquipe() {
+    if (!topicoEquipe || typeof store.lerComentariosEquipe !== 'function') return [];
+    try {
+      return (await store.lerComentariosEquipe(topicoEquipe)).map(c => {
+        const m = c.texto.match(MARCA);
+        if (!m) return null;
+        const ehDono = dono && c.login.toLowerCase() === dono.toLowerCase();
+        return { id: `gh-${c.id}`, alvoTipo: m[1], alvoId: m[2], texto: m[3].trim().slice(0, 2000), por: { id: c.login, nome: c.login, papel: ehDono ? 'proprietario' : 'equipe' }, em: c.em };
+      }).filter(Boolean);
+    } catch { return []; }
+  }
 
   async function auditar(tx, ev) {
     const caminho = `auditoria/${mes(new Date())}.json`;
@@ -48,6 +66,10 @@ export function criarApi({ store, usuario, assinar = null }) {
       dados.auditoria = [...(lidos[caminhos.at(-2)]?.eventos || []), ...(lidos[caminhos.at(-1)]?.eventos || [])];
       const ult = dados.relatorios_indice?.relatorios?.at(-1);
       if (ult) dados.relatorioAtual = await store.ler(`relatorios/${ult.arquivo}`);
+      const daEquipe = await comentariosDaEquipe();
+      if (daEquipe.length) {
+        dados.comentarios = { ...(dados.comentarios || {}), itens: [...(dados.comentarios?.itens || []), ...daEquipe].sort((a, b) => String(a.em).localeCompare(String(b.em))) };
+      }
       return { usuario: eu, dados };
     },
 
@@ -72,6 +94,13 @@ export function criarApi({ store, usuario, assinar = null }) {
 
     'POST /api/comentarios': async corpo => {
       const c = texto(corpo);
+      if (eu.papel === 'equipe') {
+        // Valida igual ao do dono e grava no tópico da equipe.
+        const { comentario } = comentar({ itens: [] }, eu, c);
+        if (!topicoEquipe) throw new ErroRegra(503, 'Comentários da equipe ainda não configurados.');
+        await store.comentarEquipe(topicoEquipe, `[${comentario.alvoTipo}:${comentario.alvoId}] ${comentario.texto}`);
+        return { ok: true, comentario };
+      }
       const r = await store.transacao(async tx => {
         const lista = (await tx.ler('comentarios.json')) || { itens: [] };
         const { comentario, evento } = comentar(lista, eu, c);
@@ -166,6 +195,7 @@ export function criarApi({ store, usuario, assinar = null }) {
     /** Executa uma rota. Erros de regra viram ErroRegra com mensagem para o usuário. */
     async chamar(metodo, caminho, corpo) {
       const rota = rotas[`${metodo} ${caminho}`];
+      if (eu.papel === 'equipe' && !PERMITIDAS_EQUIPE.has(`${metodo} ${caminho}`)) throw new ErroRegra(403, 'Só o dono pode fazer isso. No modo Equipe você vê tudo e comenta.');
       if (!rota) throw new ErroRegra(404, 'Ação desconhecida.');
       return rota(corpo || {});
     },

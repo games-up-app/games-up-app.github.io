@@ -362,10 +362,12 @@ function precisaDeVoce() {
   return h('section', { class: 'card card-precisa' },
     h('div', { class: 'precisa-topo' },
       h('span', { class: 'precisa-numero' }, String(total)),
-      h('div', {}, h('strong', {}, total === 1 ? 'coisa precisa de você' : 'coisas precisam de você'), h('span', {}, 'Toque para decidir'))),
+      ctx.estado.usuario?.papel === 'proprietario'
+        ? h('div', {}, h('strong', {}, total === 1 ? 'coisa precisa de você' : 'coisas precisam de você'), h('span', {}, 'Toque para decidir'))
+        : h('div', {}, h('strong', {}, total === 1 ? 'decisão esperando o dono' : 'decisões esperando o dono'), h('span', {}, 'Toque para ver e comentar'))),
     h('div', { class: 'pedidos' },
       finais.map(l => linha('assinatura', `Autorizar a atualização ${l.id}`, 'Pronta para ir ao jogo', () => ctx.irPara('decisoes', { tipo: 'lancamento', id: l.id }), 'amarelo')),
-      pend.slice(0, Math.max(0, 2 - finais.length)).map(p => linha(iconeDoTipo(p.tipo), p.titulo, `Proposta ${p.id} · esperando sua decisão`, () => ctx.irPara('decisoes', { tipo: 'proposta', id: p.id }), 'roxo'))),
+      pend.slice(0, Math.max(0, 2 - finais.length)).map(p => linha(iconeDoTipo(p.tipo), p.titulo, `Proposta ${p.id} · ${ctx.estado.usuario?.papel === 'proprietario' ? 'esperando sua decisão' : 'esperando o dono'}`, () => ctx.irPara('decisoes', { tipo: 'proposta', id: p.id }), 'roxo'))),
     total > 2 ? h('button', { type: 'button', class: 'btn largo', onclick: () => ctx.irPara('decisoes') }, `Ver todas as ${total}`, icone('direita', { tamanho: 18 })) : null);
 }
 
@@ -454,6 +456,7 @@ function atalhoTarefas() {
 
 function prepararAparelho() {
   const e = ctx.estado;
+  if (e.usuario?.papel !== 'proprietario') return null; // equipe não assina nem grava notificações
   if (e.chave?.estado === 'registrada' && e.pushAtivo !== false) return null;
   return cardBotao('card-atalho alerta-suave', () => ctx.irPara('ajustes'),
     h('span', { class: 'resumo-icone tom-amarelo' }, icone('sino', { tamanho: 22 })),
@@ -472,7 +475,7 @@ function saudacao() {
   const pub = wd === diaPublicacao();
   const voce = (d().propostas?.propostas || []).filter(p => p.status === 'AGUARDANDO APROVAÇÃO').length + (d().lancamentos?.lancamentos || []).filter(l => l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL').length;
   const frase = pub ? (d().config?.lancamentosPausados ? 'Hoje seria dia de publicação, mas está pausada.' : `Hoje é dia de publicação às ${horarioPublicacao()}.`)
-    : voce ? `Hoje tem ${voce === 1 ? 'uma decisão sua' : `${voce} decisões suas`} esperando.`
+    : voce ? (ctx.estado.usuario?.papel === 'proprietario' ? `Hoje tem ${voce === 1 ? 'uma decisão sua' : `${voce} decisões suas`} esperando.` : `${voce === 1 ? 'Uma decisão' : `${voce} decisões`} esperando o dono. Você pode ver e comentar.`)
       : `Hoje: ${its.map(x => CATEGORIAS[x.cat]?.nome).filter((v, i, a) => v && a.indexOf(v) === i).slice(0, 3).join(', ').toLowerCase()}.`;
   const sol = hh >= 6 && hh < 18;
   return h('header', { class: 'boas-vindas' },

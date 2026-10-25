@@ -54,3 +54,8 @@ html.sem-rolagem, html.sem-rolagem body { overflow: hidden; }
 :root[data-theme="dark"] .chip.curiosidade { background: #3d3208; color: #ffe27a; }
 
 .vazio-bonito { display: grid; place-items: center; gap: 6px; padding: 28px 12px; color: var(--muted); text-align: center; }
+
+/* Modo Equipe */
+.card-cabeca { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.card-cabeca h2 { margin: 0; font-size: 1.05rem; }
+.card .lista-mini-item:has(> .icone) { justify-content: flex-start; align-items: center; }
