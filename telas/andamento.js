@@ -1,9 +1,9 @@
 // Histórico visual do desenvolvimento. Só exibe evidências registradas, sem simular capturas.
-import { h, icone, chip, abrirModal, abrirFolha } from '../ui/componentes.js';
-import { ctx } from '../ui/contexto.js';
-import { semanaDe } from '../nucleo/andamento.js';
-import { revisaoDaEtapa } from '../nucleo/revisao-etapas.js';
-import { dataBR, chipStatus } from './comum.js';
+import { h, icone, chip, abrirModal, abrirFolha } from '../ui/componentes.js?v=20261025-etapas2';
+import { ctx } from '../ui/contexto.js?v=20261025-etapas2';
+import { semanaDe } from '../nucleo/andamento.js?v=20261025-etapas2';
+import { revisaoDaEtapa } from '../nucleo/revisao-etapas.js?v=20261025-etapas2';
+import { dataBR, chipStatus } from './comum.js?v=20261025-etapas2';
 
 const CATEGORIAS = { cenario: ['Cenário', 'imagem'], script: ['Scripts', 'tarefas'], interface: ['Interface', 'celular'], teste: ['Testes', 'qualidade'], toolbox: ['Toolbox', 'martelo'], geral: ['Geral', 'relogio'] };
 const urls = new Map();
@@ -72,12 +72,11 @@ function registro(r) {
   return h('article', { class: 'card and-registro' },
     h('div', { class: 'chips-linha' }, chip(categoria, { iconeNome: desenho }), chip(r.propostaId)),
     h('time', { datetime: r.em }, `Às ${hora} de ${dd(r.em)}`),
-    h('h2', {}, r.titulo), h('p', {}, r.descricao), h('p', { class: 'sinc' }, `Registrado por ${r.por}`),
+    h('h2', {}, r.titulo), revisao(r), h('p', {}, r.descricao), h('p', { class: 'sinc' }, `Registrado por ${r.por}`),
     r.midias?.length ? h('div', { class: 'and-midias' }, r.midias.map(midia)) : h('p', { class: 'sinc' }, 'Este registro ainda não tem print ou vídeo.'),
     r.alteracoes?.length ? h('section', { class: 'and-explorer' }, h('h3', {}, icone('tarefas'), 'Onde está e o que faz'), r.alteracoes.map(a => h('div', { class: 'and-alteracao' }, h('code', {}, a.caminho), h('p', {}, a.funcao), a.shared ? h('p', { class: 'sinc' }, 'Shared: ', a.shared) : null))) : null,
     h('div', { class: 'and-testes' }, h('strong', {}, 'Organização e testes'), h('p', {}, r.testes)),
-    r.toolbox ? h('div', { class: 'and-testes' }, h('strong', {}, `Decoração Toolbox · asset ${r.toolbox.assetId}`), h('p', {}, r.toolbox.compatibilidade), h('p', {}, r.toolbox.verificacao), chip('Inspecionado · sem código embarcado', { iconeNome: 'qualidade' })) : null,
-    revisao(r));
+    r.toolbox ? h('div', { class: 'and-testes' }, h('strong', {}, `Decoração Toolbox · asset ${r.toolbox.assetId}`), h('p', {}, r.toolbox.compatibilidade), h('p', {}, r.toolbox.verificacao), chip('Inspecionado · sem código embarcado', { iconeNome: 'qualidade' })) : null);
 }
 export function telaAndamento() {
   const dados = ctx.estado.dados;
@@ -94,6 +93,7 @@ export function telaAndamento() {
   return h('div', { class: 'pagina-andamento' },
     h('section', { class: 'card and-resumo' }, h('h2', {}, icone('martelo'), 'A atualização por dentro'), h('p', {}, 'Acompanhe o que foi criado, onde entrou no jogo e como foi testado.'),
       atual ? [chip('Em desenvolvimento', { iconeNome: 'martelo' }), h('p', {}, `${atual.propostaId || ''} · ${atual.etapa || 'Trabalho em andamento'}`)] : h('p', { class: 'sinc' }, 'Nenhuma etapa em execução informada pela automação.'),
+      h('p', { class: 'sinc' }, 'Em cada postagem, use Comentar / pedir melhoria, Aprovar etapa ou Negar etapa. Negar exige justificativa.'),
       h('button', { type: 'button', class: 'btn', onclick: () => ctx.recarregar().catch(e => ctx.avisar(e.message, true)) }, icone('relogio'), 'Atualizar andamento')),
     h('div', { class: 'and-filtros' }, h('label', {}, 'Semana', select), h('label', {}, 'Proposta', filtroProposta)),
     h('div', { class: 'and-propostas' }, propostas.filter(p => ['EM DESENVOLVIMENTO', 'EM TESTES', 'AGUARDANDO AUTORIZAÇÃO FINAL', 'APROVADA PARA PUBLICAÇÃO'].includes(p.status) && (!filtro || p.id === filtro)).map(p => h('button', { class: 'card and-proposta', type: 'button', onclick: () => ctx.irPara('decisoes', { tipo: 'proposta', id: p.id }) }, h('strong', {}, `${p.id} · ${p.titulo}`), chipStatus(p.status)))),

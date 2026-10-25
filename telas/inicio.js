@@ -1,11 +1,11 @@
 // Tela Início: boas-vindas, jogo ao vivo, semana, notícia do dia, o que precisa de você e resumo.
 // Subpágina "noticias" (estado.sub.inicio === 'noticias'): todas as notícias com filtros.
-import { h, icone, chip, iconeDoTipo, abrirFolha } from '../ui/componentes.js';
-import { ctx } from '../ui/contexto.js';
+import { h, icone, chip, iconeDoTipo, abrirFolha } from '../ui/componentes.js?v=20261025-etapas2';
+import { ctx } from '../ui/contexto.js?v=20261025-etapas2';
 import {
   FUSO, num, pct, compacto, dataBR, horaBR, haQuanto, textoCurto, urlSegura, botaoLink, imagemExterna, miniaturaIcone,
   cabecalhoSecao, botaoTexto, topoSubpagina, filtrosChips, campo, blocoNumero, miniGrafico, chipStatus, cardClicavel, cardBotao,
-} from './comum.js';
+} from './comum.js?v=20261025-etapas2';
 
 const d = () => ctx.estado.dados || {};
 

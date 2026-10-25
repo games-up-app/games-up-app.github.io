@@ -6,7 +6,7 @@
 // Se outro processo gravou antes (a branch não avança em fast-forward), relê e tenta de novo.
 
 const CAMINHO_VALIDO = /^[a-z0-9][a-z0-9\-_/]*\.json$/;
-import { MIDIA_ANDAMENTO } from './andamento.js';
+import { MIDIA_ANDAMENTO } from './andamento.js?v=20261025-etapas2';
 // Só imagens comuns (SVG pode carregar código; fica de fora).
 const PREVIA_VALIDA = /^previas\/[a-z0-9][a-z0-9\-_/]*\.(png|jpg|jpeg|webp)$/;
 const TIPOS_IMAGEM = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };

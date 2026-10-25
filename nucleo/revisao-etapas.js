@@ -1,5 +1,5 @@
 // Aceite de etapas do desenvolvimento. Nunca altera propostas, pacotes ou assinaturas.
-import { ErroRegra, limparTexto } from './regras.js';
+import { ErroRegra, limparTexto } from './regras.js?v=20261025-etapas2';
 
 export function revisaoDaEtapa(andamento, registro, agora = Date.now()) {
   if (registro.revisao?.status) return registro.revisao;

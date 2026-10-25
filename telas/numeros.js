@@ -3,9 +3,9 @@
 // - Thumbnails: imagens, ranking da semana (selo PROTEGIDA), gráficos e seletor de semanas (folha).
 // - Relatório da semana: cards com ícones, gráficos SVG/HTML próprios e textos longos em folhas.
 // Nada expande para baixo; nenhum gráfico força rolagem horizontal (larguras em %, SVG com viewBox).
-import { h, s, icone, abrirFolha, chip, vazio } from '../ui/componentes.js';
-import { ctx } from '../ui/contexto.js';
-import { classificarThumbnail, thumbnailsProtegidas } from '../nucleo/estatistica.js';
+import { h, s, icone, abrirFolha, chip, vazio } from '../ui/componentes.js?v=20261025-etapas2';
+import { ctx } from '../ui/contexto.js?v=20261025-etapas2';
+import { classificarThumbnail, thumbnailsProtegidas } from '../nucleo/estatistica.js?v=20261025-etapas2';
 
 // ------------------------------------------------------------------ formatação
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];

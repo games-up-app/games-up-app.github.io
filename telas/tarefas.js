@@ -1,7 +1,7 @@
 // Tela Tarefas: cards com progresso. Detalhes e atualização abrem numa folha (nada expande para baixo).
-import { h, icone, chip, abrirFolha } from '../ui/componentes.js';
-import { ctx } from '../ui/contexto.js';
-import { dataBR, haQuanto, segmentado, campo, chipStatus, cardBotao, blocoComentarios, miniaturaIcone } from './comum.js';
+import { h, icone, chip, abrirFolha } from '../ui/componentes.js?v=20261025-etapas2';
+import { ctx } from '../ui/contexto.js?v=20261025-etapas2';
+import { dataBR, haQuanto, segmentado, campo, chipStatus, cardBotao, blocoComentarios, miniaturaIcone } from './comum.js?v=20261025-etapas2';
 
 const STATUS = ['A FAZER', 'EM DESENVOLVIMENTO', 'EM TESTES', 'CONCLUÍDA', 'IMPEDIDA'];
 const ROTULO = { 'A FAZER': 'A fazer', 'EM DESENVOLVIMENTO': 'Fazendo', 'EM TESTES': 'Testando', 'CONCLUÍDA': 'Concluída', 'IMPEDIDA': 'Travada' };

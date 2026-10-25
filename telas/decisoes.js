@@ -4,8 +4,8 @@
 //   2) Publicações para autorizar (lançamentos) -> card "Sua autorização" com a imagem EXATA do pacote
 //      e o código do pacote (8 primeiros caracteres do SHA-256), que precisa ser confirmado.
 // Nada expande para baixo: detalhes abrem em folha (de baixo para cima) ou modal (fundo escuro).
-import { h, icone, iconeDoTipo, abrirFolha, abrirModal, botaoCopiar, chip, vazio } from '../ui/componentes.js';
-import { ctx } from '../ui/contexto.js';
+import { h, icone, iconeDoTipo, abrirFolha, abrirModal, botaoCopiar, chip, vazio } from '../ui/componentes.js?v=20261025-etapas2';
+import { ctx } from '../ui/contexto.js?v=20261025-etapas2';
 
 // ------------------------------------------------------------------ status e grupos
 const ST = {

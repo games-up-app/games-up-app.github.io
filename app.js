@@ -4,22 +4,22 @@
 // A publicação no jogo exige a assinatura feita pela chave deste aparelho (ver nucleo/).
 // Este arquivo cuida de: entrar, carregar os dados, barra de abas, notificações e o objeto ctx.
 // Cada tela fica em painel/telas/*.js e só usa o ctx.
-import { CONFIG } from './config.js';
-import { RepoGitHub } from './nucleo/github.js';
-import { criarApi } from './nucleo/api.js';
-import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js';
-import { chavePublicaVapid } from './nucleo/vapid.js';
-import { ativarNoAparelho, notificacoesAtivas } from './nucleo/notificacoes.js';
-import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js';
-import { ctx } from './ui/contexto.js';
-import { telaInicio } from './telas/inicio.js';
-import { telaDecisoes } from './telas/decisoes.js';
-import { telaNumeros } from './telas/numeros.js';
-import { telaPesquisa } from './telas/pesquisa.js';
-import { telaAjustes } from './telas/ajustes.js';
-import { telaTarefas } from './telas/tarefas.js';
-import { telaAndamento } from './telas/andamento.js';
-import { telaIdeias } from './telas/ideias.js';
+import { CONFIG } from './config.js?v=20261025-etapas2';
+import { RepoGitHub } from './nucleo/github.js?v=20261025-etapas2';
+import { criarApi } from './nucleo/api.js?v=20261025-etapas2';
+import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js?v=20261025-etapas2';
+import { chavePublicaVapid } from './nucleo/vapid.js?v=20261025-etapas2';
+import { ativarNoAparelho, notificacoesAtivas } from './nucleo/notificacoes.js?v=20261025-etapas2';
+import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js?v=20261025-etapas2';
+import { ctx } from './ui/contexto.js?v=20261025-etapas2';
+import { telaInicio } from './telas/inicio.js?v=20261025-etapas2';
+import { telaDecisoes } from './telas/decisoes.js?v=20261025-etapas2';
+import { telaNumeros } from './telas/numeros.js?v=20261025-etapas2';
+import { telaPesquisa } from './telas/pesquisa.js?v=20261025-etapas2';
+import { telaAjustes } from './telas/ajustes.js?v=20261025-etapas2';
+import { telaTarefas } from './telas/tarefas.js?v=20261025-etapas2';
+import { telaAndamento } from './telas/andamento.js?v=20261025-etapas2';
+import { telaIdeias } from './telas/ideias.js?v=20261025-etapas2';
 
 const estado = { usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null, pushAtivo: null };
 // Os dados ficam na organização games-up-app: o token precisa ter ela como "Resource owner".

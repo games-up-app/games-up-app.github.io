@@ -1,11 +1,11 @@
 // Tela Pesquisa: o que está em alta, sugestões do Discord e jogos de escola para acompanhar.
 // Tudo em cards com miniatura; detalhes abrem numa folha de baixo para cima.
-import { h, icone, chip, abrirFolha } from '../ui/componentes.js';
-import { ctx } from '../ui/contexto.js';
+import { h, icone, chip, abrirFolha } from '../ui/componentes.js?v=20261025-etapas2';
+import { ctx } from '../ui/contexto.js?v=20261025-etapas2';
 import {
   num, pct, compacto, dataBR, haQuanto, textoCurto, linkSeguro, botaoLink, imagemExterna, miniaturaIcone,
   cabecalhoSecao, segmentado, filtrosChips, campo, blocoNumero, miniGrafico, chipTendencia, cardClicavel, semEmoji,
-} from './comum.js';
+} from './comum.js?v=20261025-etapas2';
 
 const d = () => ctx.estado.dados || {};
 
