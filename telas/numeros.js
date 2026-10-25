@@ -54,7 +54,10 @@ function moldura(classe, conteudoReserva, img) {
 }
 function miniaturaThumb(x, posicao, classe = 'nm-midia-thumb') {
   const reserva = [icone('thumbnail', { tamanho: 30 }), h('span', {}, x.nome?.replace('Thumbnail ', 'Thumb ') || '')];
-  return moldura(classe, reserva, x.previa ? imagemDados(x.previa, x.nome) : null);
+  // Imagem real: do repositório (previa) ou a pública da Roblox (imagemUrl, coletada automaticamente).
+  const img = x.previa ? imagemDados(x.previa, x.nome)
+    : /^https:\/\/[a-z0-9.-]+\.rbxcdn\.com\//.test(x.imagemUrl || '') ? h('img', { class: 'nm-img', src: x.imagemUrl, alt: x.nome || '', loading: 'lazy', referrerpolicy: 'no-referrer' }) : null;
+  return moldura(classe, reserva, img);
 }
 
 // ------------------------------------------------------------------ peças
@@ -208,7 +211,7 @@ function telaThumbnails() {
   const totalAnt = anterior ? (anterior.total?.impressoes || anterior.itens.reduce((a, b) => a + (b.impressoes || 0), 0)) : null;
   const jogTotal = A.itens.reduce((a, b) => a + jog(b), 0);
   const jogAnt = anterior ? anterior.itens.reduce((a, b) => a + jog(b), 0) : null;
-  const temPrevias = A.itens.some(x => x.previa);
+  const temPrevias = A.itens.some(x => x.previa || x.imagemUrl);
   const galeria = (dados().jogo?.imagensDaPagina || []).filter(i => /^https:\/\/|^\//.test(i.url || ''));
   const melhor = A.ranking[0];
 
@@ -296,7 +299,14 @@ const INDICADORES = [
   ['impressoes', 'Vezes vista', 'olho', compacto, false],
   ['jogadasQualificadas', 'Jogadores', 'jogadores', compacto, false],
   ['qptr', 'Taxa de jogadas', 'alvo', v => pct(v), true],
-  ['tempoMedioSessaoMin', 'Tempo médio', 'relogio', v => (v == null ? '—' : `${String(v).replace('.', ',')} min`), false],
+  ['tempoMedioSessaoMin', 'Tempo médio', 'relogio', v => (v == null ? '—' : `${String(Math.round(v * 10) / 10).replace('.', ',')} min`), false],
+  ['jogadoresAtivosDia', 'Jogadores por dia', 'jogadores', v => compacto(Math.round(v)), false],
+  ['novosDia', 'Novos por dia', 'raio', v => compacto(Math.round(v)), false],
+  ['recorrentesDia', 'Voltaram por dia', 'ok', v => compacto(Math.round(v)), false],
+  ['picoSimultaneo', 'Pico ao mesmo tempo', 'trofeu', v => num(Math.round(v)), false],
+  ['retencaoD1', 'Voltam no dia seguinte', 'calendario', v => pct(v, 1), true],
+  ['retencaoD7', 'Voltam em 7 dias', 'calendario', v => pct(v, 1), true],
+  ['minutosPorJogador', 'Minutos por jogador', 'relogio', v => (v == null ? '—' : `${Math.round(v)} min`), false],
 ];
 
 /** Compara a semana do relatório com a anterior (dados.metricas.periodos; reserva: indicadores do relatório). */
@@ -308,8 +318,9 @@ function comparacaoSemanas(r) {
   const ant = i > 0 ? periodos[i - 1]?.indicadores || {} : {};
   const doRel = Object.fromEntries((r.indicadores || []).map(x => [x.chave, x]));
   const linhas = INDICADORES.map(([chave, nome, ic, fmt, taxa]) => {
-    const agora = atual[chave] ?? doRel[chave]?.atual ?? null;
-    const antes = ant[chave] ?? doRel[chave]?.anterior ?? null;
+    // A semana anterior que veio junto no relatório (Roblox) é a mais confiável.
+    const agora = doRel[chave]?.atual ?? atual[chave] ?? null;
+    const antes = doRel[chave]?.anterior ?? ant[chave] ?? null;
     return { chave, nome, ic, fmt, taxa, agora, antes };
   }).filter(l => l.agora != null || l.antes != null);
   const temAnterior = linhas.some(l => l.antes != null);
@@ -435,13 +446,102 @@ function telaRelatorio() {
     r.diagnostico?.meta ? h('p', { class: 'nm-fonte' }, icone('noticia', { tamanho: 14 }), r.diagnostico.meta) : null);
 }
 
+// ------------------------------------------------------------------ jogadores (Roblox Open Cloud)
+const FONTES = { Charts: 'Destaques da Roblox', HomeRecommendation: 'Página Inicial', ContinueToPlay: 'Continuar jogando', Search: 'Busca', Friends: 'Amigos', Others: 'Outros', GameDetailPage: 'Página do jogo' };
+const APARELHOS = { Phone: ['Celular', 'interface'], Tablet: ['Tablet', 'interface'], Computer: ['Computador', 'grafico'], Console: ['Console', 'gameplay'], TV: ['TV', 'imagem'], VR: ['VR', 'olho'] };
+
+function graficoLinhaDias(pts, rotulo) {
+  if (pts.length < 2) return h('p', { class: 'nm-nota' }, icone('relogio', { tamanho: 16 }), 'Poucos dias de dados ainda.');
+  const W = 360, H = 160, m = { l: 36, r: 10, t: 16, b: 24 };
+  const maxV = Math.max(...pts.map(p => p.valor)) * 1.1 || 1;
+  const x = i => m.l + (W - m.l - m.r) * (i / (pts.length - 1));
+  const y = v => m.t + (H - m.t - m.b) * (1 - v / maxV);
+  const caminho = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.valor).toFixed(1)}`).join(' ');
+  const area = `${caminho} L${x(pts.length - 1).toFixed(1)},${y(0)} L${x(0).toFixed(1)},${y(0)} Z`;
+  const ip = pts.reduce((a, p, i) => (p.valor > pts[a].valor ? i : a), 0);
+  const g = s('svg', { viewBox: `0 0 ${W} ${H}`, class: 'nm-svg', role: 'img', 'aria-label': `${rotulo}. Maior: ${num(Math.round(pts[ip].valor))} em ${dataCurta(pts[ip].data)}.` },
+    s('defs', {}, s('linearGradient', { id: 'nm-grad-dias', x1: 0, y1: 0, x2: 0, y2: 1 }, s('stop', { offset: '0', class: 'nm-grad-a' }), s('stop', { offset: '1', class: 'nm-grad-b' }))));
+  [0, 0.5, 1].forEach(f => { const v = (maxV / 1.1) * f; g.append(s('line', { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), class: 'nm-grade' }), s('text', { x: m.l - 6, y: y(v) + 4, 'text-anchor': 'end', class: 'nm-eixo' }, compacto(Math.round(v)))); });
+  g.append(s('path', { d: area, fill: 'url(#nm-grad-dias)' }), s('path', { d: caminho, class: 'nm-linha' }));
+  g.append(s('circle', { cx: x(ip), cy: y(pts[ip].valor), r: 4.5, class: 'nm-ponto' }), s('text', { x: Math.min(W - m.r - 20, Math.max(m.l + 20, x(ip))), y: y(pts[ip].valor) - 8, 'text-anchor': 'middle', class: 'nm-valor' }, compacto(Math.round(pts[ip].valor))));
+  g.append(s('text', { x: m.l, y: H - 6, class: 'nm-eixo' }, dataCurta(pts[0].data)), s('text', { x: W - m.r, y: H - 6, 'text-anchor': 'end', class: 'nm-eixo' }, dataCurta(pts.at(-1).data)));
+  return g;
+}
+
+function telaJogadores() {
+  const a = dados().analytics;
+  if (!a) return vazio('Os números completos chegam na próxima coleta diária (6h).', 'relogio');
+  const J = a.jogadores || {}, T = a.tempo || {}, R = a.retencao || {};
+  const n = v => (v == null ? '—' : compacto(Math.round(v)));
+  const tile = (ic, valor, rotulo, ind, taxa = false) => h('div', { class: 'nm-tile' }, icone(ic, { tamanho: 18 }), h('strong', {}, valor), h('span', {}, rotulo), ind ? variacao(ind.anterior, ind.atual, taxa) : null);
+  const sub = ctx.estado.sub;
+  const caixaGrafico = h('div');
+  const desenhar = f => {
+    sub.numerosDias = f;
+    const pts = f === '90' ? a.historico?.ativosPorDia90 || [] : a.historico?.ativosPorDia28 || [];
+    caixaGrafico.replaceChildren(
+      h('div', { class: 'nm-alternar', role: 'tablist' },
+        h('button', { type: 'button', role: 'tab', 'aria-selected': String(f === '28'), onclick: () => desenhar('28') }, '28 dias'),
+        h('button', { type: 'button', role: 'tab', 'aria-selected': String(f === '90'), onclick: () => desenhar('90') }, '90 dias')),
+      graficoLinhaDias(pts, `Jogadores por dia nos últimos ${f} dias`));
+  };
+  desenhar(sub.numerosDias === '90' ? '90' : '28');
+  const novos = J.novosPorDia?.atual || 0, volt = J.recorrentesPorDia?.atual || 0, tot = novos + volt || 1;
+  const fontes = (a.fontes || []).filter(f => f.impressoes > 0);
+  const maxF = Math.max(1, ...fontes.map(f => f.impressoes));
+  const aparelhos = (a.desempenho?.plataformas || []).filter(p => (p.jogadoresPorDia || 0) >= 5);
+  const fpsTom = v => (v == null ? '' : v >= 50 ? 'ok' : v >= 30 ? 'warn' : 'bad');
+  return h('div', { class: 'nm-pilha' },
+    h('p', { class: 'nm-fraco' }, icone('calendario', { tamanho: 14 }), ` Semana de ${dataCurta(a.semana?.inicio)} a ${dataCurta(a.semana?.fim)} comparada com a anterior · atualizado ${dataHora(a.atualizadoEm)}`),
+    h('section', { class: 'nm-card' }, tituloCard('jogadores', 'Quantas pessoas jogam'),
+      h('div', { class: 'nm-tiles' },
+        tile('jogadores', n(J.ativosPorDia?.atual), 'por dia', J.ativosPorDia),
+        tile('trofeu', n(J.picoSimultaneo?.atual), 'pico ao mesmo tempo', J.picoSimultaneo),
+        tile('calendario', n(J.ativosNoMes), 'no mês', null),
+        tile('olho', n(J.visitas?.atual), 'visitas na semana', J.visitas))),
+    h('section', { class: 'nm-card' }, tituloCard('grafico', 'Jogadores por dia'), caixaGrafico),
+    h('section', { class: 'nm-card' }, tituloCard('raio', 'Novos x voltaram'),
+      h('div', { class: 'nm-barra-trilho grosso', style: { display: 'flex', overflow: 'hidden' } },
+        h('span', { class: 'nm-barra-cheia forte', style: { width: `${(100 * novos) / tot}%` }, title: 'Novos' }),
+        h('span', { class: 'nm-barra-cheia antes', style: { width: `${(100 * volt) / tot}%` }, title: 'Voltaram' })),
+      h('div', { class: 'nm-tiles' },
+        tile('raio', n(novos), `novos por dia (${pct(novos / tot, 0)})`, J.novosPorDia),
+        tile('ok', n(volt), `voltaram por dia (${pct(volt / tot, 0)})`, J.recorrentesPorDia))),
+    h('section', { class: 'nm-card' }, tituloCard('calendario', 'Quantos voltam (retenção)'),
+      h('div', { class: 'nm-tiles' },
+        tile('calendario', R.d1 != null ? pct(R.d1, 1) : '—', 'voltam no dia seguinte', R.d1Anterior != null ? { anterior: R.d1Anterior, atual: R.d1 } : null, true),
+        tile('calendario', R.d7 != null ? pct(R.d7, 1) : '—', 'voltam depois de 7 dias', R.d7Anterior != null ? { anterior: R.d7Anterior, atual: R.d7 } : null, true)),
+      h('p', { class: 'nm-nota' }, icone('lampada', { tamanho: 16 }), 'De cada 100 que entram num dia, quantos voltam no dia seguinte e uma semana depois. É o principal sinal de que o jogo prende.')),
+    h('section', { class: 'nm-card' }, tituloCard('relogio', 'Tempo jogado'),
+      h('div', { class: 'nm-tiles' },
+        tile('relogio', T.minutosPorJogador?.atual != null ? `${Math.round(T.minutosPorJogador.atual)} min` : '—', 'por jogador no dia', T.minutosPorJogador),
+        tile('relogio', T.minutosPorSessao?.atual != null ? `${Math.round(T.minutosPorSessao.atual)} min` : '—', 'por partida', T.minutosPorSessao),
+        tile('trofeu', n(T.horasTotais?.atual), 'horas na semana', T.horasTotais))),
+    fontes.length ? h('section', { class: 'nm-card' }, tituloCard('globo', 'De onde vêm as pessoas'),
+      h('div', { class: 'nm-comparacao' }, fontes.map(f => h('div', { class: 'nm-comp' },
+        h('div', { class: 'nm-comp-topo' }, h('span', { class: 'nm-comp-nome' }, FONTES[f.fonte] || f.fonte), h('strong', {}, compacto(f.impressoes)), variacao(f.impressoesAnterior, f.impressoes)),
+        h('div', { class: 'nm-barra-trilho fino' }, h('span', { class: 'nm-barra-cheia forte', style: { width: `${(100 * f.impressoes) / maxF}%` } })),
+        h('span', { class: 'nm-fraco' }, f.taxa != null && f.taxa <= 1 ? `${pct(f.taxa, 1)} de quem viu entrou e jogou` : '')))),
+      h('p', { class: 'nm-nota' }, icone('lampada', { tamanho: 16 }), 'Pessoas diferentes que viram o jogo em cada lugar da Roblox na semana.')) : null,
+    aparelhos.length ? h('section', { class: 'nm-card' }, tituloCard('interface', 'Desempenho por aparelho'),
+      h('div', { class: 'nm-tiles' }, aparelhos.map(p => {
+        const [nome, ic] = APARELHOS[p.plataforma] || [p.plataforma, 'interface'];
+        return h('div', { class: 'nm-tile' }, icone(ic, { tamanho: 18 }), h('strong', {}, nome), h('span', {}, `${n(p.jogadoresPorDia)} jogadores/dia`),
+          chip(p.fps != null ? `${Math.round(p.fps)} FPS` : 'FPS —', { tom: fpsTom(p.fps) }),
+          h('span', { class: 'nm-fraco' }, `quedas ${p.taxaQueda != null ? pct(p.taxaQueda, 1) : '—'} · memória ${p.memoriaMB != null ? `${Math.round(p.memoriaMB)} MB` : '—'}`));
+      })),
+      h('p', { class: 'nm-nota' }, icone('lampada', { tamanho: 16 }), `FPS é quantas imagens por segundo: acima de 50 é liso, abaixo de 30 trava. Quedas do servidor na semana: ${num(a.desempenho?.quedasServidor?.atual ?? 0)}.`)) : null,
+    (a.indisponivel || []).length ? botaoFolha('alerta', 'Dados que a Roblox não entregou', `${a.indisponivel.length} item(ns)`, () => folhaLista('Não entregue pela Roblox', a.indisponivel), 'warn') : null,
+    h('p', { class: 'nm-fonte' }, icone('noticia', { tamanho: 14 }), a.fonte || 'Roblox'));
+}
+
 // ------------------------------------------------------------------ tela
 export function telaNumeros() {
   if (!ctx.estado?.dados) return vazio('Carregando…', 'relogio');
   ctx.estado.sub = ctx.estado.sub || {};
-  const [aba, seg] = segmentos('numeros', [['thumbs', 'Thumbnails', 'thumbnail'], ['relatorio', 'Relatório da semana', 'noticia']]);
+  const [aba, seg] = segmentos('numeros', [['jogadores', 'Jogadores', 'jogadores'], ['thumbs', 'Thumbnails', 'thumbnail'], ['relatorio', 'Relatório', 'noticia']]);
   return h('div', { class: 'tela-numeros' },
     blocoJogoAgora(),
     seg,
-    aba === 'thumbs' ? telaThumbnails() : telaRelatorio());
+    aba === 'jogadores' ? telaJogadores() : aba === 'thumbs' ? telaThumbnails() : telaRelatorio());
 }

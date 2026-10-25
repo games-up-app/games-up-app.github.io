@@ -1,5 +1,5 @@
 {
-  "revisao": "5a6f496353541a71dbce377cc682233b118b7c82",
+  "revisao": "3759903894d9a8663f68cdc2c3561add7d5498d5",
   "arquivos": {
     "aparelhos-autorizados.json": "50481e94f491dbc3bcc8797aede84768ecd12a5a1094365057ad6d882f88a1cf",
     "app.js": "b17ac31e3a9c3661c796df4310bff9731eb1fe4d1b7a8a4f961d68da223cc4ad",
@@ -19,7 +19,7 @@
     "marca/logo-claro.png": "3ac0a0530f055795d3a95d38425444d1bc38e6460588bf15ab34aa8fd99b4219",
     "marca/logo-escuro.png": "4b1b4a201b40ec479d79e23d36ffc8892e7ff2c446814db3c6c6ba570bd424d8",
     "nucleo/aparelho.js": "da71eb906c39561bc2e798cde62cd46478729128971de218ac2ae7ff4d1f47aa",
-    "nucleo/api.js": "7967b3a09b3f1577c8a61568528dfc7478ae3f26dbea6ea02cc09fb7d853bd1b",
+    "nucleo/api.js": "4b28a24eea12578b680a9df06bfcd56573ce443463981ea7ae8b81cc72d98195",
     "nucleo/assinatura.js": "36d63fd3c6cbcb6d8916a9ab917780490157d00da53c0803faa40841b557538b",
     "nucleo/cadastro-aparelho.js": "e036941f1a86d4444d69bff608cce235ee014a355aa96914465d6d32ae449126",
     "nucleo/canonico.js": "5af3043b4857d67c779bb1ac194e84f58c44aa97c830f147f4aec01e2331684f",
@@ -35,7 +35,7 @@
     "telas/comum.js": "7f3f4aeddeae03fa7d8ba332ef3c6abff4d72d91c9383283c7c07438f7505319",
     "telas/decisoes.js": "e7d261de04dd72b0332a7a3b95fba4210b6c936717a6d4666037c3fed2efe862",
     "telas/inicio.js": "880ee46fb91821d6427da04d6d4a4effde5f6e39bf80b9d5b80cee5beefc7e36",
-    "telas/numeros.js": "3a92b71ca5fcb2bce4e5916139545bfc1079a30e6adbb9150338144b15611657",
+    "telas/numeros.js": "dcf8d131856bdc6bc7ff950c68024d1c9f7a64975bd3b6981fb8185c516a7416",
     "telas/pesquisa.js": "d9bcb66d399ecd546f294fdcedb506143c8575bb6a1c46de9606ba06e6c96563",
     "telas/tarefas.js": "dd7194a67ec6311b82502215fddcf61a5545a3889f36ecf41f961bebee3938bb",
     "tema.js": "625f3de7fde7749c77f908420734016e8395a5fc78064bbbfc37822c906eed89",
