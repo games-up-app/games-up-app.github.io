@@ -288,7 +288,7 @@ details.tecnico summary { font-size: .8rem; color: var(--muted); font-weight: 60
   .marca .logo { width: 112px; }
   .principal { padding: 16px 16px calc(var(--barra-h) + 32px + env(safe-area-inset-bottom)); }
   /* Barra de abas fixa embaixo, estilo app */
-  .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; background: var(--bg); border-top: 1px solid var(--border); padding: 0 max(4px, env(safe-area-inset-left)) env(safe-area-inset-bottom) max(4px, env(safe-area-inset-right)); }
+  .nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; background: var(--bg); border-top: 1px solid var(--border); padding: 0 max(4px, env(safe-area-inset-left)) env(safe-area-inset-bottom) max(4px, env(safe-area-inset-right)); }
   .nav button { flex-direction: column; justify-content: center; gap: 3px; min-height: var(--barra-h); padding: 6px 0 4px; border-radius: 0; font-size: .7rem; line-height: 1.1; text-align: center; color: var(--muted); }
   .nav button:hover { background: transparent; }
   .nav button .icone { width: 24px; height: 24px; }
@@ -336,4 +336,114 @@ details.tecnico summary { font-size: .8rem; color: var(--muted); font-weight: 60
 }
 @media (prefers-reduced-motion: no-preference) {
   .barra > span { transition: width .4s ease; }
+}
+
+/* Menos informação por vez: ações principais primeiro, detalhes sob demanda. */
+.principal { max-width: 940px; }
+.topo { margin-bottom: 28px; }
+.topo h1:focus { outline: none; }
+.contexto { color: var(--muted); font-size: .8rem; margin: 3px 0 0; }
+.voltar { display: inline-flex; align-items: center; gap: 3px; min-height: 44px; border: 0; padding: 0 2px; margin: -10px 0 8px; background: none; color: var(--brand-text); cursor: pointer; font: inherit; font-size: .88rem; }
+.voltar .icone { width: 17px; height: 17px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.btn .icone { width: 18px; height: 18px; }
+.btn.discreto { background: transparent; border-color: transparent; color: var(--brand-text); }
+.btn.discreto:hover { background: var(--brand-soft); }
+.link-botao { display: inline-flex; align-items: center; gap: 4px; padding: 8px 0 8px 8px; min-height: 44px; border: 0; background: transparent; color: var(--brand-text); font: inherit; font-size: .85rem; font-weight: 650; cursor: pointer; }
+.link-botao .icone { width: 15px; height: 15px; }
+.link-botao:focus-visible, .voltar:focus-visible, .item-mais:focus-visible, .preparar-aparelho:focus-visible { outline: 2px solid var(--brand-text); outline-offset: 2px; }
+summary { min-height: 44px; padding-top: 10px; padding-bottom: 10px; }
+details.tecnico summary { min-height: 44px; }
+.segmentos button { box-sizing: border-box; min-height: 44px; }
+
+.pagina-inicio > .chamada-inicio { padding-bottom: 28px; }
+.sobretitulo { color: var(--brand-text); font-size: .75rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 12px; }
+.chamada-inicio h2 { max-width: 22ch; font-size: clamp(1.65rem, 4vw, 2.1rem); line-height: 1.16; letter-spacing: -.035em; margin-bottom: 10px; }
+.chamada-inicio .descricao { margin: 0; max-width: 48ch; font-size: .94rem; }
+.chamada-inicio .acoes { margin-top: 20px; }
+.chamada-inicio .btn.primario { min-width: 166px; }
+.status-automacao { padding: 22px 0 18px; }
+.status-cabecalho { display: flex; align-items: flex-start; gap: 12px; }
+.status-cabecalho > .icone { color: var(--brand-text); width: 22px; height: 22px; margin-top: 2px; }
+.status-cabecalho h2 { font-size: .85rem; font-weight: 650; color: var(--muted); margin: 0 0 4px; }
+.status-cabecalho p { font-size: .95rem; font-weight: 600; margin: 0; }
+.detalhes-automacao { margin: 0 0 0 34px; padding: 0; border: 0; }
+.detalhes-automacao summary { font-size: .8rem; font-weight: 550; color: var(--muted); }
+.resumo-jogo { padding: 20px 0; }
+.resumo-jogo h2 { font-size: .98rem; }
+.grade-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 8px; }
+.grade-3 > .cartao.kpi { border: 0; padding: 8px 16px 8px 0; }
+.grade-3 > .cartao.kpi + .cartao.kpi { border-left: 1px solid var(--border); padding-left: 16px; }
+.grade-3 .kpi .rotulo { font-size: .78rem; color: var(--muted); font-weight: 550; }
+.grade-3 .kpi .valor { font-size: clamp(1.25rem, 3vw, 1.65rem); font-weight: 750; margin-top: 5px; }
+.periodo-resumo { font-size: .72rem; margin: 12px 0 0; }
+.preparar-aparelho { display: flex; width: 100%; align-items: center; gap: 12px; text-align: left; min-height: 76px; padding: 16px 0; border: 0; border-top: 1px solid var(--border); background: none; font: inherit; color: var(--text); cursor: pointer; }
+.preparar-aparelho > .icone:first-child { color: var(--brand-text); }
+.preparar-aparelho > .icone:last-child { width: 18px; height: 18px; color: var(--muted); }
+.preparar-aparelho strong { font-size: .9rem; }
+.preparar-aparelho .sinc { font-size: .78rem; }
+.avisos-inicio { font-size: .85rem; margin-top: 0; padding-top: 0; }
+.avisos-inicio summary { font-size: .8rem; font-weight: 550; color: var(--muted); }
+
+.menu-mais { margin: 0; padding: 0; list-style: none; }
+.menu-mais > li + li { border-top: 1px solid var(--border); }
+.item-mais { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 90px; padding: 18px 4px; border: 0; background: none; font: inherit; color: var(--text); cursor: pointer; text-align: left; }
+.item-mais > .icone:first-child { width: 24px; height: 24px; color: var(--brand-text); }
+.item-mais > .icone:last-child { width: 17px; height: 17px; color: var(--muted); }
+.item-mais strong { font-weight: 650; }
+.item-mais:hover { background: var(--surface-2); }
+.pagina-mais > .cartao:first-child { padding-top: 0; padding-bottom: 0; }
+.conta { margin-top: 24px; }
+.conta .acoes { margin-top: 8px; }
+
+details.proposta, details.tarefa { padding: 0; }
+details.proposta:first-of-type, details.tarefa:first-of-type { border-top: 0; }
+.resumo-proposta, .resumo-tarefa { list-style: none; padding: 22px 0; color: var(--text); }
+.resumo-proposta::-webkit-details-marker, .resumo-tarefa::-webkit-details-marker { display: none; }
+.resumo-proposta:focus-visible, .resumo-tarefa:focus-visible { outline: 2px solid var(--brand-text); outline-offset: 3px; border-radius: 4px; }
+.resumo-proposta .linha-titulo, .resumo-tarefa .linha-titulo { display: flex; margin-bottom: 10px; }
+.resumo-proposta h2 { font-size: 1.05rem; line-height: 1.4; margin: 0; max-width: 60ch; }
+.resumo-tarefa h3 { font-size: .98rem; line-height: 1.4; margin: 0; }
+.abrir-proposta, .tarefa-abrir { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--brand-text); font-size: .82rem; font-weight: 650; margin-top: 12px; }
+.abrir-proposta .icone, .tarefa-abrir .icone { width: 17px; height: 17px; }
+.tarefa-abrir { color: var(--muted); font-weight: 550; }
+.resumo-proposta .aberto { display: none; }
+.proposta[open] > .resumo-proposta .aberto { display: inline; }
+.proposta[open] > .resumo-proposta .fechado { display: none; }
+.proposta[open] > .resumo-proposta .icone, .tarefa[open] > .resumo-tarefa .tarefa-abrir .icone { transform: rotate(90deg); }
+.corpo-proposta, .corpo-tarefa { padding-bottom: 24px; }
+.corpo-proposta .resumo { font-size: .98rem; font-weight: 550; color: var(--text-2); margin: 0 0 16px; }
+.resumo-campos { font-size: .9rem; }
+.resumo-campos dt { color: var(--text); }
+.corpo-proposta .previas { margin: 16px 0; }
+.corpo-proposta .previas figcaption { font-size: .76rem; font-weight: 500; }
+.corpo-proposta .cartao.decisao { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 20px; }
+.detalhes-proposta summary { font-size: .86rem; }
+.opcoes-decisao { border: 0; padding-top: 0; margin-top: 4px; }
+.opcoes-decisao summary { color: var(--muted); font-size: .84rem; font-weight: 550; }
+.configuracao-extra > summary > .titulo-icone { display: inline-flex; margin: 0; font-size: .98rem; }
+.primeiro-acesso { margin-top: 18px; }
+.primeiro-acesso summary { font-size: .88rem; }
+
+@media (max-width: 900px) {
+  :root { --barra-h: 68px; }
+  .lateral { padding-top: max(12px, env(safe-area-inset-top)); padding-bottom: 12px; }
+  .marca .logo { width: 94px; }
+  .marca small { padding-left: 12px; border-left: 1px solid var(--border); font-size: .8rem; }
+  .principal { padding-top: 22px; }
+  .nav button { font-size: .75rem; gap: 4px; padding-top: 8px; padding-bottom: 7px; }
+  .nav button[aria-current="page"] { box-shadow: none; }
+  .nav button .icone { box-sizing: content-box; width: 22px; height: 22px; padding: 4px 14px; border-radius: 999px; }
+  .nav button[aria-current="page"] .icone { background: var(--brand-soft); }
+  .nav .contador { top: 6px; left: calc(50% + 12px); }
+  .topo { margin-bottom: 28px; }
+  .chamada-inicio .acoes { gap: 6px; }
+  .chamada-inicio .btn { flex: 0 1 auto; }
+  .grade-3 > .cartao.kpi { padding-right: 9px; }
+  .grade-3 > .cartao.kpi + .cartao.kpi { padding-left: 9px; }
+  .grade-3 .kpi .rotulo { font-size: .72rem; }
+  .grade-3 .kpi .valor { font-size: 1.2rem; white-space: nowrap; }
+  .resumo-proposta, .resumo-tarefa { padding: 20px 0; }
+  .decisao-principal .btn { flex: 1 1 145px; }
+  .item-mais .sinc { font-size: .8rem; max-width: 30ch; }
 }

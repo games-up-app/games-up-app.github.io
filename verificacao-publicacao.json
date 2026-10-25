@@ -1,7 +1,7 @@
 {
-  "revisao": "656df20d65cc6e8055ddca9c221bf3d38e4e350c",
+  "revisao": "d5f4686b1dee4f145feac25c64e3b1dabb863b7e",
   "arquivos": {
-    "app.js": "416b6dcb68a07f2a770906716fc636420336d130876e05a6a9133ce0062c75da",
+    "app.js": "6ab7fe036657cba0783f62bff6b124dcf322c30627a3a3034fd18d52322c1803",
     "config.js": "bac56d26b0b57fcde0bf47ca20930db602dde92cc866ab37a557510144167181",
     "icones/icone-180.png": "a7f58c25f748e26a2a6c850120c1d55055982f478d45d3c38ab7f3b68614b00a",
     "icones/icone-192.png": "9c0a2f1ca1c2be0ac5b3bd74df96c9d07df688384c3b5e566f5e5f1f8874d99d",
@@ -24,7 +24,7 @@
     "nucleo/regras.js": "22b8ec4d3a36c74b42306fb6fcbd1dd0fa2c1fe1fe9454a355de99d7c2bea981",
     "nucleo/vapid.js": "b60f5c3e84dffd3886ae8b08d236d024be7828606da38b01c2166efd8153b492",
     "push-config.json": "ffe0b62d8381c9243ffc0e5595bc2f6d565979f4d6777a12a13ed2d3b50e5f74",
-    "styles.css": "c626d8a68e2287163a5bfc41b031ad9e6f943395426d26003affd6f682d414d8",
+    "styles.css": "90ba305db4fdbfd9548d827596556793a7977f6fe72e7eeaabae7cec75f75887",
     "sw.js": "8f1cc2081223d0d91fccc82e11f6945565f2da9187f5afded609309be42b1678",
     "tema.js": "625f3de7fde7749c77f908420734016e8395a5fc78064bbbfc37822c906eed89"
   }

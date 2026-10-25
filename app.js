@@ -12,11 +12,13 @@ import { classificarThumbnail, thumbnailsProtegidas } from './nucleo/estatistica
 
 const estado = { usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null };
 const LINK_TOKEN = 'https://github.com/settings/personal-access-tokens/new?name=Games%20Up&description=Painel%20da%20Escola%20Brasileira&expires_in=366&contents=write&variables=write';
-// Seis abas simples. As seções antigas viraram sub-abas dentro delas.
+// Quatro destinos principais. Consultas e configurações ficam em Mais.
 const ABAS = [
   ['inicio', 'Início'], ['decisoes', 'Decisões'], ['tarefas', 'Tarefas'],
-  ['numeros', 'Números'], ['pesquisa', 'Pesquisa'], ['ajustes', 'Ajustes'],
+  ['mais', 'Mais'], ['numeros', 'Números'], ['pesquisa', 'Pesquisa'], ['ajustes', 'Ajustes'],
 ];
+const PRINCIPAIS = ABAS.slice(0, 4);
+const SECUNDARIAS = ['numeros', 'pesquisa', 'ajustes'];
 const DECIDIVEIS = ['PROPOSTA', 'AGUARDANDO APROVAÇÃO', 'ADIADA'];
 
 // ------------------------------------------------------------------ utilidades
@@ -87,6 +89,8 @@ const ICONES = {
   numeros: 'M5 20V11M12 20V5M19 20v-6M3 20h18',
   pesquisa: 'M11 4a7 7 0 1 0 0 14a7 7 0 1 0 0-14zM20 20l-4-4',
   ajustes: 'M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4',
+  mais: 'M5 5h4v4H5zM15 5h4v4h-4zM5 15h4v4H5zM15 15h4v4h-4z',
+  voltar: 'M15 6l-6 6 6 6',
   escudo: 'M12 3l7 3v5c0 4.5-3 8-7 10c-4-2-7-5.5-7-10V6zM9 12l2 2 4-4',
   alerta: 'M12 4L2.5 20h19zM12 10v4M12 17h.01',
   info: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM12 11v5M12 8h.01',
@@ -216,13 +220,14 @@ function telaLogin(msg) {
         h('p', {}, 'Games Up · Central da Escola Brasileira')),
       h('section', { class: 'login-acesso' },
         h('h1', {}, 'Entrar'),
-        h('p', { class: 'login-texto' }, 'Só você entra, usando uma chave de acesso do GitHub (token). Isso é feito uma vez em cada aparelho.'),
-        h('ol', { class: 'passos' },
+        h('p', { class: 'login-texto' }, 'Cole seu token do GitHub para abrir o painel.'),
+        h('form', { onsubmit: enviar }, h('label', { for: 'token' }, 'Token'), campo, erro, h('div', { class: 'acoes' }, botao)),
+        h('details', { class: 'primeiro-acesso' }, h('summary', {}, 'Primeiro acesso? Criar um token'),
+          h('ol', { class: 'passos' },
           h('li', {}, h('a', { href: LINK_TOKEN, target: '_blank', rel: 'noopener noreferrer' }, 'Toque aqui para criar o token'), '. O nome e as permissões já vêm preenchidos.'),
           h('li', {}, 'Em ', h('strong', {}, 'Repository access'), ', escolha ', h('strong', {}, 'Only select repositories'), ' e marque ', h('strong', {}, 'Automatizar-Escola-Brasileira'), '.'),
-          h('li', {}, 'Toque em ', h('strong', {}, 'Generate token'), ', copie e cole abaixo.')),
-        h('form', { onsubmit: enviar }, h('label', { for: 'token' }, 'Token'), campo, erro, h('div', { class: 'acoes' }, botao)),
-        h('p', { class: 'sinc' }, 'O token fica guardado só neste aparelho e só é usado para falar com o GitHub.'))));
+          h('li', {}, 'Toque em ', h('strong', {}, 'Generate token'), ', copie e cole no campo acima.'))),
+        h('p', { class: 'sinc' }, 'Seu acesso fica guardado só neste aparelho.'))));
 }
 
 function alternarTema() {
@@ -244,12 +249,13 @@ function render() {
   const d = estado.dados;
   const pendentes = (d.propostas?.propostas || []).filter(p => p.status === 'AGUARDANDO APROVAÇÃO').length;
   const finais = (d.lancamentos?.lancamentos || []).filter(l => l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL').length;
-  const nav = h('nav', { class: 'nav', 'aria-label': 'Seções' }, ABAS.map(([id, nome]) =>
-    h('button', { 'aria-current': estado.aba === id ? 'page' : null, onclick: () => irPara(id) },
+  const secundaria = SECUNDARIAS.includes(estado.aba);
+  const nav = h('nav', { class: 'nav', 'aria-label': 'Menu principal' }, PRINCIPAIS.map(([id, nome]) =>
+    h('button', { 'aria-current': (estado.aba === id || (id === 'mais' && secundaria)) ? 'page' : null, onclick: () => irPara(id) },
       icone(id),
       h('span', { class: 'nav-nome' }, nome),
       id === 'decisoes' && pendentes + finais ? h('span', { class: 'contador', title: 'Esperando sua decisão', 'aria-label': `${pendentes + finais} esperando sua decisão` }, pendentes + finais) : null)));
-  const conteudo = { inicio, decisoes, tarefas: tarefasAba, numeros, pesquisa, ajustes }[estado.aba]();
+  const conteudo = { inicio, decisoes, tarefas: tarefasAba, mais, numeros, pesquisa, ajustes }[estado.aba]();
   document.getElementById('raiz').replaceChildren(
     h('div', { class: 'app' },
       h('aside', { class: 'lateral' },
@@ -257,12 +263,10 @@ function render() {
         nav),
       h('main', { class: 'principal', id: 'conteudo' },
         h('div', { class: 'topo' },
-          h('div', {}, h('div', { class: 'titulo-jogo' }, h('img', { class: 'logo-jogo', src: 'marca/jogo.png', alt: 'Escola Brasileira', width: 44, height: 44, onerror: e => e.target.remove() }), h('h1', {}, ABAS.find(a => a[0] === estado.aba)[1])),
-            h('div', { class: 'sinc' }, `Atualizado em ${dataBR(d.meta?.ultimaSincronizacao)}`)),
-          h('div', { class: 'topo-acoes' },
-            h('span', { class: 'sinc' }, estado.usuario.nome),
-            h('button', { class: 'btn', onclick: alternarTema, 'aria-label': 'Alternar tema claro/escuro' }, 'Tema'),
-            h('button', { class: 'btn', onclick: sair }, 'Sair'))),
+          h('div', {},
+            secundaria ? h('button', { class: 'voltar', onclick: () => irPara('mais') }, icone('voltar'), 'Mais') : null,
+            h('div', { class: 'titulo-jogo' }, h('img', { class: 'logo-jogo', src: 'marca/jogo.png', alt: '', width: 44, height: 44, onerror: e => e.target.remove() }),
+              h('div', {}, h('h1', { tabindex: '-1' }, ABAS.find(a => a[0] === estado.aba)[1]), h('p', { class: 'contexto' }, 'Escola Brasileira'))))),
         // O aviso de dados velhos só importa onde há números do jogo.
         estado.aba === 'numeros' ? alertaDesatualizado() : null,
         conteudo)),
@@ -270,10 +274,33 @@ function render() {
 }
 
 function irPara(id) {
-  estado.aba = id;
+  estado.aba = ABAS.some(a => a[0] === id) ? id : 'inicio';
   try { sessionStorage.setItem('eb-aba', id); } catch {}
   render();
   window.scrollTo(0, 0);
+  document.querySelector('.principal h1')?.focus({ preventScroll: true });
+}
+
+function mais() {
+  const itens = [
+    ['numeros', 'Números', 'Desempenho do jogo, thumbnails e relatórios.'],
+    ['pesquisa', 'Pesquisa', 'Tendências e sugestões da comunidade.'],
+    ['ajustes', 'Ajustes', 'Notificações, autorização e automação.'],
+  ];
+  return h('div', { class: 'pagina-mais' },
+    h('section', { class: 'cartao' }, h('ul', { class: 'menu-mais' }, itens.map(([id, nome, detalhe]) => h('li', {},
+      h('button', { class: 'item-mais', onclick: () => irPara(id) }, icone(id),
+        h('span', { class: 'pedido-texto' }, h('strong', {}, nome), h('span', { class: 'sinc' }, detalhe)), icone('seta')))))),
+    h('section', { class: 'cartao conta' }, h('p', { class: 'sinc' }, `Conectado como ${estado.usuario.nome}`),
+      h('div', { class: 'acoes' }, h('button', { class: 'btn', onclick: alternarTema }, 'Alternar tema'), h('button', { class: 'btn', onclick: sair }, 'Sair do aparelho'))));
+}
+
+// O resumo é curto; os textos completos continuam disponíveis nos detalhes.
+function textoCurto(texto, limite = 180) {
+  const valor = String(texto || '').trim();
+  if (valor.length <= limite) return valor;
+  const corte = valor.slice(0, limite).replace(/\s+\S*$/, '');
+  return `${corte || valor.slice(0, limite)}…`;
 }
 
 function horasDesde(iso) { return iso ? (Date.now() - new Date(iso).getTime()) / 3600_000 : Infinity; }
@@ -317,23 +344,30 @@ function filtroSelect(chave, rotuloTodos, opcoes) {
 function cartaoProposta(p) {
   const comentarios = (estado.dados.comentarios?.itens || []).filter(c => c.alvoTipo === 'proposta' && c.alvoId === p.id);
   const fontes = p.origem?.fontes || [];
+  const imagens = (p.previas || []).filter(caminho => /\.(png|jpe?g|webp)$/i.test(caminho));
   const lista = itens => h('ul', { style: 'margin:0;padding-left:18px' }, itens);
-  return h('article', { class: 'cartao', 'aria-labelledby': `tit-${p.id}` },
-    h('div', { class: 'linha-titulo' }, h('span', { class: 'codigo' }, p.id), seloStatus(p.status)),
-    h('h2', { id: `tit-${p.id}` }, p.titulo),
+  return h('details', { class: 'cartao proposta', name: 'propostas', id: `proposta-${p.id}`, open: estado.propostaAberta === p.id,
+    ontoggle: e => { if (e.target.open) estado.propostaAberta = p.id; else if (estado.propostaAberta === p.id) estado.propostaAberta = null; } },
+    h('summary', { class: 'resumo-proposta' },
+      h('span', { class: 'linha-titulo' }, h('span', { class: 'codigo' }, p.id), seloStatus(p.status)),
+      h('h2', { id: `tit-${p.id}` }, p.titulo),
+      h('span', { class: 'abrir-proposta' }, h('span', { class: 'fechado' }, 'Ver proposta'), h('span', { class: 'aberto' }, 'Fechar proposta'), icone('seta'))),
+    h('div', { class: 'corpo-proposta' },
     p.bloqueio ? h('div', { class: 'alerta warn' }, h('strong', {}, 'Ainda não dá para decidir.'), h('span', {}, p.bloqueio)) : null,
-    p.resumo ? h('p', { class: 'resumo' }, p.resumo) : null,
-    (p.previas || []).length
-      ? h('div', { class: 'previas referencia' }, p.previas.map(previa))
-      : h('div', { class: 'alerta warn' }, h('strong', {}, p.tipo === 'thumbnail' ? 'Falta a thumbnail candidata.' : 'Falta a imagem de referência.'), h('span', {}, p.tipo === 'thumbnail' ? 'A arte nova ainda vai ser criada. Espere por ela antes de decidir.' : 'Ainda vai ser criada uma imagem explicando a ideia. Espere por ela antes de decidir.')),
-    h('p', { class: 'descricao' }, p.descricao),
-    h('dl', { class: 'campos' },
-      h('dt', {}, 'Por que fazer'), h('dd', {}, p.motivacao),
-      h('dt', {}, 'O que o jogador ganha'), h('dd', {}, p.beneficio),
-      h('dt', {}, 'Quanto trabalho dá'), h('dd', {}, p.esforco),
-      h('dt', {}, 'O que pode dar errado'), h('dd', {}, p.risco)),
-    h('details', {}, h('summary', {}, 'Mais detalhes'),
+    h('p', { class: 'resumo' }, textoCurto(p.resumo || p.descricao)),
+    imagens.length
+      ? h('div', { class: 'previas referencia' }, imagens.map(previa))
+      : h('p', { class: 'sinc' }, p.tipo === 'thumbnail' ? 'A thumbnail candidata ainda está sendo preparada.' : 'A imagem de referência ainda está sendo preparada.'),
+    h('dl', { class: 'campos resumo-campos' },
+      h('dt', {}, 'Por quê'), h('dd', {}, textoCurto(p.motivacao)),
+      h('dt', {}, 'Benefício'), h('dd', {}, textoCurto(p.beneficio))),
+    h('details', { class: 'detalhes-proposta' }, h('summary', {}, 'Plano completo, riscos e fontes'),
       h('dl', { class: 'campos' },
+        h('dt', {}, 'O que muda'), h('dd', {}, p.descricao),
+        h('dt', {}, 'Por que fazer'), h('dd', {}, p.motivacao),
+        h('dt', {}, 'O que o jogador ganha'), h('dd', {}, p.beneficio),
+        h('dt', {}, 'Trabalho previsto'), h('dd', {}, p.esforco),
+        h('dt', {}, 'Riscos'), h('dd', {}, p.risco),
         h('dt', {}, 'Como vamos medir'), h('dd', {}, p.hipotese ? [selo(p.hipotese.classificacao, 'info'), ` ${p.hipotese.metrica}: ${p.hipotese.esperado}`] : '—'),
         h('dt', {}, 'Evidências'), h('dd', {}, (p.evidencias || []).length ? lista(p.evidencias.map(e => h('li', {}, e))) : '—'),
         h('dt', {}, 'Fontes'), h('dd', {}, fontes.length ? lista(fontes.map(fo => h('li', {}, fo.url ? linkSeguro(fo.url, fo.titulo) : fo.titulo, ` (${fo.data})`))) : '—'),
@@ -343,7 +377,7 @@ function cartaoProposta(p) {
     (p.decisoes || []).length ? h('details', {}, h('summary', {}, `Decisões anteriores (${p.decisoes.length})`),
       h('ul', { class: 'lista-limpa' }, p.decisoes.map(dc => h('li', {}, selo(dc.acao, 'neutro'), ` por ${dc.por.nome} em ${dataBR(dc.em)}`, dc.comentario ? ` — “${dc.comentario}”` : '')))) : null,
     ehDono() && DECIDIVEIS.includes(p.status) ? painelDecisao(p) : null,
-    blocoComentarios('proposta', p.id, comentarios));
+    blocoComentarios('proposta', p.id, comentarios)));
 }
 
 /** Imagem guardada no repositório privado: baixada com o token e exibida localmente. */
@@ -352,7 +386,7 @@ function previa(caminho) {
   const nome = rel.split('/').pop();
   if (!/^previas\/[a-z0-9][a-z0-9\-_/]*\.(svg|png|jpg|jpeg|webp)$/.test(rel)) return h('div', { class: 'placeholder-img' }, nome);
   const ehThumb = rel.startsWith('previas/thumbnails/');
-  const legenda = ehThumb ? 'Thumbnail candidata — só vai para a vitrine do Roblox se você autorizar' : 'Imagem de referência — só explica a ideia; não vai para o jogo';
+  const legenda = ehThumb ? 'Thumbnail candidata · vitrine do Roblox após sua autorização' : 'Imagem de referência · explica a ideia; não vai para o jogo';
   const img = h('img', { alt: legenda, loading: 'lazy' });
   const fig = h('figure', {}, img, h('figcaption', {}, legenda));
   estado.repo.lerImagem(rel).then(b => {
@@ -373,14 +407,16 @@ function painelDecisao(p) {
     gravar('/api/propostas/decisao', { propostaId: p.id, acao, comentario: texto.value, versao: p.versao }, botoes, `Decisão registrada para ${p.id}.`);
   };
   botoes.push(
-    h('button', { class: 'btn primario', onclick: enviar('aprovar') }, 'Aprovar para desenvolvimento'),
+    h('button', { class: 'btn primario', onclick: enviar('aprovar') }, 'Aprovar ideia'),
     h('button', { class: 'btn', onclick: enviar('pedir_alteracoes') }, 'Pedir alterações'),
     h('button', { class: 'btn', onclick: enviar('adiar') }, 'Adiar'),
     h('button', { class: 'btn perigo', onclick: enviar('rejeitar') }, 'Rejeitar'));
   return h('div', { class: 'cartao decisao' },
     h('h3', {}, 'Sua decisão'),
-    h('p', { class: 'sinc' }, 'Aprovar só libera o trabalho. Nada vai para o jogo sem a sua autorização final, que é pedida depois.'),
-    h('label', { for: `dec-${p.id}` }, 'Comentário'), texto, h('div', { class: 'acoes' }, botoes));
+    h('p', { class: 'sinc' }, 'Aprovar libera o trabalho. Você autoriza a publicação depois.'),
+    h('label', { for: `dec-${p.id}` }, 'Comentário (obrigatório ao pedir alterações)'), texto,
+    h('div', { class: 'acoes decisao-principal' }, botoes.slice(0, 2)),
+    h('details', { class: 'opcoes-decisao' }, h('summary', {}, 'Outras opções'), h('div', { class: 'acoes' }, botoes.slice(2))));
 }
 
 function blocoComentarios(alvoTipo, alvoId, comentarios) {
@@ -409,7 +445,7 @@ function cartaoLancamento(l) {
       h('dt', {}, 'Código do pacote (SHA-256)'), h('dd', { class: 'hash' }, l.artefato?.sha256 || '—')),
   ];
   if (l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL' && !estado.chave) {
-    blocos.push(h('div', { class: 'alerta warn' }, h('strong', {}, 'Falta a chave deste aparelho.'), h('span', {}, 'Para autorizar, crie a chave em Ajustes → Chave de autorização. É um toque só.')));
+    blocos.push(h('div', { class: 'alerta warn' }, h('strong', {}, 'Falta a chave deste aparelho.'), h('span', {}, 'Crie a chave em Mais → Ajustes → Chave de autorização.')));
   } else if (l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL') {
     const conf = h('input', { type: 'text', placeholder: '8 primeiros caracteres do código', 'aria-label': 'Confirmação do código do pacote', autocomplete: 'off' });
     const coment = h('textarea', { placeholder: 'Opcional. Obrigatório se for devolver.', maxlength: 2000, 'aria-label': 'Comentário' });
@@ -453,16 +489,19 @@ function cartaoTarefa(t) {
     } }, 'Salvar progresso');
     form = h('details', {}, h('summary', {}, 'Atualizar progresso'), caixas, h('label', {}, 'Progresso (%)'), prog, h('label', {}, 'Status'), st, h('label', {}, 'Nota'), nota, h('div', { class: 'acoes' }, btn));
   }
-  return h('article', { class: 'cartao' },
-    h('div', { class: 'linha-titulo' }, h('span', { class: 'codigo' }, t.id), seloStatus(t.status)),
-    h('h3', {}, t.titulo),
+  return h('details', { class: 'cartao tarefa', name: 'tarefas' },
+    h('summary', { class: 'resumo-tarefa' },
+      h('span', { class: 'linha-titulo' }, h('span', { class: 'codigo' }, t.id), seloStatus(t.status)),
+      h('h3', {}, t.titulo),
+      h('span', { class: 'tarefa-abrir' }, `${t.progresso || 0}% concluído`, icone('seta'))),
+    h('div', { class: 'corpo-tarefa' },
     h('div', { class: 'meta-linha' }, h('span', {}, `Quem faz: ${t.responsavelNome || '—'}`), t.propostaId ? h('span', {}, `Da proposta ${t.propostaId}`) : h('span', {}, 'Preparação do sistema')),
     h('div', { class: 'barra', role: 'progressbar', 'aria-valuenow': t.progresso, 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-label': 'Progresso' }, h('span', { style: `width:${t.progresso || 0}%` })),
     h('div', { class: 'sinc' }, `${t.progresso || 0}% pronto`),
     !form && (t.checklist || []).length ? h('ul', { style: 'padding-left:18px' }, t.checklist.map(c => h('li', {}, `${c.feito ? 'Feito' : 'Falta'}: ${c.texto}`))) : null,
     (t.impedimentos || []).length ? h('div', { class: 'alerta bad' }, h('strong', {}, 'O que está travando:'), h('span', {}, t.impedimentos.join('; '))) : null,
     (t.historico || []).length ? h('details', {}, h('summary', {}, `Histórico (${t.historico.length})`), h('ul', { class: 'lista-limpa' }, t.historico.map(x => h('li', { class: 'sinc' }, `${dataBR(x.em)} · ${x.por?.nome || 'automação'}: ${x.de?.progresso ?? '—'}% → ${x.para?.progresso ?? '—'}%${x.nota ? ` — ${x.nota}` : ''}`)))) : null,
-    form, blocoComentarios('tarefa', t.id, comentarios));
+    form, blocoComentarios('tarefa', t.id, comentarios)));
 }
 
 // ------------------------------------------------------------------ 4. thumbnails
@@ -694,22 +733,22 @@ function config() {
       h('p', { class: 'sinc' }, 'Com isto marcado, nada vai para o jogo, mesmo o que já foi autorizado.'),
       h('label', { for: 'cfg-hora' }, 'Horário de publicação aos sábados (Brasília)'), hora,
       h('div', { class: 'acoes' }, salvar)),
-    h('section', { class: 'cartao' }, titulo('calendario', 'Como é a semana'),
-      h('p', { class: 'sinc' }, 'O que acontece em cada dia (horário de Brasília).'),
+    h('details', { class: 'cartao configuracao-extra' }, h('summary', {}, titulo('calendario', 'Agenda da semana')),
       tabela(['Dia', 'O que acontece', 'Quem faz'], (c.cronograma || []).map(x => [x.dia, x.atividade, x.automatico]))),
-    h('section', { class: 'cartao' }, titulo('robo', 'As automações estão funcionando?'), h('p', { class: 'sinc' }, estado.dados['saude-agendamentos']?.observacao || ''), listaSaude()),
-    h('section', { class: 'cartao' }, titulo('pessoa', 'Seu acesso'),
+    h('details', { class: 'cartao configuracao-extra' }, h('summary', {}, titulo('robo', 'Estado das automações')), h('p', { class: 'sinc' }, estado.dados['saude-agendamentos']?.observacao || ''), listaSaude()),
+    h('details', { class: 'cartao configuracao-extra' }, h('summary', {}, titulo('pessoa', 'Seu acesso')),
       h('p', {}, `Você entrou como ${estado.usuario.nome} (${estado.usuario.id}). O token fica só neste aparelho.`),
       h('p', { class: 'sinc' }, 'Para trocar o token (por exemplo, quando ele vencer), toque em Sair e entre de novo.')),
-    h('section', { class: 'cartao' }, titulo('documento', 'Custos e limites'),
+    h('details', { class: 'cartao configuracao-extra' }, h('summary', {}, titulo('documento', 'Custos e limites')),
       h('dl', { class: 'campos' }, Object.entries(c.custos || {}).map(([k, v]) => [h('dt', {}, k), h('dd', {}, typeof v === 'boolean' ? (v ? 'Sim' : 'Não') : v)]))));
 }
 
 function blocoChave() {
   if (estado.chave) {
     return h('section', { class: 'cartao' }, titulo('chave', 'Chave de autorização'),
-      h('p', { class: 'ok-linha' }, icone('check'), `Este aparelho pode autorizar publicações (chave criada em ${dataBR(estado.chave.criadaEm)}).`),
-      h('p', { class: 'sinc' }, 'A chave não pode ser copiada. Se você trocar de celular ou limpar os dados do navegador, crie outra no aparelho novo.'));
+      h('p', { class: 'ok-linha' }, icone('check'), 'Este aparelho pode autorizar publicações.'),
+      h('details', {}, h('summary', {}, 'Sobre esta chave'),
+        h('p', { class: 'sinc' }, `Criada em ${dataBR(estado.chave.criadaEm)}. Ela fica só neste aparelho. Se trocar de celular ou limpar o navegador, crie outra.`)));
   }
   const b = h('button', { class: 'btn primario', onclick: async () => {
     b.disabled = true; b.textContent = 'Criando…';
@@ -720,8 +759,8 @@ function blocoChave() {
       render();
     } catch (e) { avisar(`Não criada: ${e.message}`, true); b.disabled = false; b.textContent = 'Criar chave neste aparelho'; }
   } }, 'Criar chave neste aparelho');
-  return h('section', { class: 'cartao destaque' }, titulo('chave', 'Falta criar a chave de autorização'),
-    h('p', {}, 'Sem ela, este aparelho não consegue autorizar publicações. A chave fica presa neste aparelho: ninguém consegue copiá-la, nem a automação.'),
+  return h('section', { class: 'cartao destaque' }, titulo('chave', 'Autorizar por este aparelho'),
+    h('p', {}, 'Crie a chave para assinar suas autorizações. Ela fica só neste aparelho.'),
     h('div', { class: 'acoes' }, b));
 }
 
@@ -735,59 +774,52 @@ function segmentos(chave, opcoes) {
 function inicio() {
   const d = estado.dados;
   const ind = d.metricas?.periodos?.at(-1)?.indicadores || {};
-  const meta = d.metricas?.meta?.impressoes7dias;
   const pend = (d.propostas?.propostas || []).filter(p => p.status === 'AGUARDANDO APROVAÇÃO');
   const finais = (d.lancamentos?.lancamentos || []).filter(l => l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL');
-  const lanc = (d.lancamentos?.lancamentos || []).at(-1);
-  // Tarefas de configuração que dependem do dono (não mexe em dados; só conta).
   const minhas = (d.tarefas?.tarefas || []).filter(t => /propriet/i.test(t.responsavelNome || '') && t.status !== 'CONCLUÍDA');
   const avisos = [];
-  if (!estado.chave) avisos.push('Este aparelho ainda não tem a chave de autorização (Ajustes).');
-  if (!d.meta?.coletaAutomaticaAtiva) avisos.push('A leitura automática dos números do Roblox ainda não está ligada.');
-  if (!d.discord?.acesso) avisos.push('Ainda sem acesso ao Discord.');
-  if (d.config?.lancamentosPausados) avisos.push('Publicações pausadas (Ajustes).');
+  if (!d.meta?.coletaAutomaticaAtiva) avisos.push('A coleta automática dos números do Roblox ainda precisa de configuração.');
+  if (!d.discord?.acesso) avisos.push('A integração com o Discord ainda está pendente.');
+  if (d.config?.lancamentosPausados) avisos.push('As publicações estão pausadas em Ajustes.');
   const falhas = Object.entries(d['saude-agendamentos']?.tarefas || {}).filter(([, t]) => t.status === 'falhou');
   falhas.forEach(([n]) => avisos.push(`Uma automação falhou: ${n}`));
   const total = finais.length + pend.length;
-  const pedido = (texto, detalhe, aba, destaque = false) => h('li', {},
-    h('button', { class: `pedido${destaque ? ' urgente' : ''}`, onclick: () => irPara(aba) },
-      h('span', { class: 'pedido-texto' }, h('strong', {}, texto), detalhe ? h('span', { class: 'sinc' }, detalhe) : null),
-      h('span', { class: 'seta' }, icone('seta'))));
   const ind2 = v => (v != null ? `${String(v).replace('.', ',')} min` : '—');
-  const porMil = ind.qptr != null ? Math.round(ind.qptr * 1000) : null;
-
-  return h('div', {},
-    h('section', { class: 'cartao destaque' },
-      titulo('pessoa', 'O que precisa de você'),
-      total || minhas.length
-        ? h('ul', { class: 'lista-pedidos' },
-          finais.map(l => pedido(`Autorizar a publicação ${l.id}`, 'Ela só vai para o jogo se você autorizar.', 'decisoes', true)),
-          pend.map(p => pedido(p.titulo, `${p.id} · aprovar, pedir mudança, adiar ou rejeitar`, 'decisoes')),
-          minhas.length ? pedido(`${minhas.length} ${minhas.length === 1 ? 'tarefa de preparação' : 'tarefas de preparação'} com você`, 'Coisas que só você consegue fazer.', 'tarefas') : null)
-        : h('p', { class: 'ok-linha' }, icone('check'), 'Nada esperando você agora.')),
-    h('section', { class: 'cartao' },
-      titulo('grafico', 'Como o jogo foi nos últimos 7 dias'),
-      alertaDesatualizado(),
-      h('div', { class: 'grade grade-4' },
-        kpi('Vezes que o jogo apareceu', num(ind.impressoes), 'Quantas vezes o jogo foi mostrado para alguém no Roblox (impressões).', meta ? `${pct(ind.impressoes / meta, 0)} da meta de ${num(meta)}` : '', meta ? ind.impressoes / meta : null),
-        kpi('Taxa de jogadas (qPTR)', pct(ind.qptr), porMil != null ? `De cada 1.000 pessoas que viram o jogo, cerca de ${porMil} entraram.` : 'De quem viu o jogo, quantos entraram.'),
-        kpi('Entradas que contaram', num(ind.jogadasQualificadas), 'Pessoas que viram o jogo e entraram para jogar (jogadas qualificadas).'),
-        kpi('Tempo jogando', ind2(ind.tempoMedioSessaoMin), 'Quanto tempo cada pessoa fica no jogo, em média, por vez.'))),
+  const chamada = finais.length
+    ? `${finais.length} ${finais.length === 1 ? 'publicação para autorizar' : 'publicações para autorizar'}`
+    : pend.length ? `${pend.length} ${pend.length === 1 ? 'proposta para revisar' : 'propostas para revisar'}` : 'Tudo em dia';
+  return h('div', { class: 'pagina-inicio' },
+    h('section', { class: 'cartao chamada-inicio' },
+      h('p', { class: 'sobretitulo' }, total ? 'Precisa de você' : 'Suas decisões'),
+      h('h2', {}, chamada),
+      h('p', { class: 'descricao' }, finais.length ? 'Confira a versão pronta antes de liberar a publicação.' : pend.length ? 'Escolha uma ideia para ver os detalhes e decidir.' : 'Você será avisado quando houver algo para decidir.'),
+      h('div', { class: 'acoes' },
+        total ? h('button', { class: 'btn primario', onclick: () => irPara('decisoes') }, finais.length ? 'Revisar publicação' : 'Ver propostas', icone('seta')) : null,
+        minhas.length ? h('button', { class: 'btn discreto', onclick: () => irPara('tarefas') }, `Suas tarefas (${minhas.length})`) : null)),
     blocoExecutor(),
-    h('section', { class: 'cartao' }, titulo('calendario', `Próximo sábado, ${dataBR(proximoSabado())}`),
-      lanc ? h('p', {}, `Atualização ${lanc.id}: `, seloStatus(lanc.status)) : h('p', {}, 'Nada vai para o jogo: nenhuma atualização foi autorizada.')),
-    celular(),
-    avisos.length ? h('details', { class: 'cartao' }, h('summary', {}, `Avisos do sistema (${avisos.length})`), h('ul', { class: 'lista-avisos' }, avisos.map(a => h('li', {}, a)))) : null);
+    h('section', { class: 'cartao resumo-jogo' },
+      h('div', { class: 'linha-titulo' }, h('h2', {}, 'Últimos 7 dias'), h('button', { class: 'link-botao', onclick: () => irPara('numeros') }, 'Ver números', icone('seta'))),
+      h('div', { class: 'grade grade-3' }, kpi('Impressões', num(ind.impressoes)), kpi('Taxa de entrada', pct(ind.qptr)), kpi('Tempo médio', ind2(ind.tempoMedioSessaoMin))),
+      h('p', { class: 'sinc periodo-resumo' }, `Leitura do Roblox: ${dataBR(d.meta?.ultimaSincronizacao)}`)),
+    (!estado.chave || estado.pushAtivo === false) ? h('button', { class: 'preparar-aparelho', onclick: () => irPara('ajustes') }, icone('celular'),
+      h('span', { class: 'pedido-texto' }, h('strong', {}, 'Preparar este aparelho'), h('span', { class: 'sinc' }, 'Notificações e autorização de publicações')), icone('seta')) : null,
+    avisos.length ? h('details', { class: 'avisos-inicio' }, h('summary', {}, `Avisos de configuração (${avisos.length})`), h('ul', { class: 'lista-avisos' }, avisos.map(a => h('li', {}, a)))) : null);
 }
 
 function blocoExecutor() {
-  const ex = estado.dados.executor;
-  if (!ex) return null;
+  const d = estado.dados;
+  const ex = d.executor || {};
   const atual = ex.trabalhoAtual;
-  return h('section', { class: 'cartao' }, titulo('robo', 'O que a automação está fazendo'),
-    atual ? h('p', {}, selo(atual.quem || 'Claude', 'info'), ` ${atual.propostaId} — ${atual.etapa || 'trabalhando'}`) : h('p', {}, 'Nada em andamento. Quando você aprovar uma proposta, o trabalho começa sozinho.'),
-    h('p', { class: 'sinc' }, `Última vez que conferiu: ${ex.ultimaVerificacao ? dataBR(ex.ultimaVerificacao) : 'nunca'}${ex.computador ? ` · ${ex.computador}` : ''}`),
-    (ex.historico || []).length ? h('details', {}, h('summary', {}, 'Últimos passos'), h('ul', { class: 'lista-limpa' }, ex.historico.slice(-8).reverse().map(x => h('li', { class: 'sinc' }, `${dataBR(x.em)} · ${x.propostaId || ''} ${x.texto}`)))) : null);
+  const aprovadas = (d.propostas?.propostas || []).filter(p => p.status === 'APROVADA PARA DESENVOLVIMENTO');
+  const texto = d.config?.lancamentosPausados ? 'Publicações pausadas'
+    : atual ? `${atual.propostaId} · ${atual.etapa || 'trabalho em andamento'}`
+      : aprovadas.length ? `${aprovadas.length} ${aprovadas.length === 1 ? 'proposta aprovada aguardando' : 'propostas aprovadas aguardando'} a automação`
+        : 'Sem trabalho na fila';
+  return h('section', { class: 'cartao status-automacao' },
+    h('div', { class: 'status-cabecalho' }, icone('robo'), h('div', {}, h('h2', {}, 'Automação'), h('p', {}, texto))),
+    h('details', { class: 'detalhes-automacao' }, h('summary', {}, 'Ver atividade'),
+      h('p', { class: 'sinc' }, `Última verificação: ${ex.ultimaVerificacao ? dataBR(ex.ultimaVerificacao) : 'ainda sem registro'}`),
+      (ex.historico || []).length ? h('ul', { class: 'lista-limpa' }, ex.historico.slice(-8).reverse().map(x => h('li', { class: 'sinc' }, `${dataBR(x.em)} · ${x.propostaId || ''} ${x.texto}`))) : null));
 }
 
 function decisoes() {
@@ -797,7 +829,7 @@ function decisoes() {
   const [aba, seg] = segmentos('decisoes', [['abertas', `Em aberto (${abertas.length})`], ['todas', `Todas (${todas.length})`]]);
   const lista = aba === 'abertas' ? abertas : todas;
   return h('div', {},
-    h('p', { class: 'intro' }, 'Aqui você decide o que entra no jogo. São dois passos: primeiro aprovar a ideia; depois, com tudo pronto e testado, autorizar a publicação.'),
+    h('p', { class: 'intro' }, 'Aprove a ideia agora. Autorize a publicação quando estiver pronta.'),
     lancs.length ? h('section', { class: 'cartao destaque' }, titulo('chave', 'Autorização final de publicação'), lancs.map(cartaoLancamento)) : null,
     seg,
     lista.length ? lista.map(cartaoProposta) : h('p', { class: 'ok-linha' }, icone('check'), 'Nenhuma proposta esperando você.'));
@@ -808,9 +840,13 @@ function tarefasAba() {
   if (!t.length) return h('p', { class: 'vazio' }, 'Nenhuma tarefa.');
   const comVoce = t.filter(x => /propriet/i.test(x.responsavelNome || ''));
   const outras = t.filter(x => !comVoce.includes(x));
-  return h('div', {},
-    comVoce.length ? [titulo('pessoa', `Com você (${comVoce.length})`, 'h2', { class: 'titulo-icone grupo' }), h('p', { class: 'sinc' }, 'Coisas que só você consegue fazer. Depois de fazer, marque o progresso.'), comVoce.map(cartaoTarefa)] : null,
-    outras.length ? [titulo('robo', `Com a equipe e a automação (${outras.length})`, 'h2', { class: 'titulo-icone grupo' }), outras.map(cartaoTarefa)] : null);
+  const [aba, seg] = segmentos('tarefas', [['voce', `Com você (${comVoce.length})`], ['equipe', `Automação (${outras.length})`]]);
+  const lista = aba === 'voce' ? comVoce : outras;
+  const abertas = lista.filter(x => x.status !== 'CONCLUÍDA');
+  const feitas = lista.filter(x => x.status === 'CONCLUÍDA');
+  return h('div', {}, seg,
+    abertas.length ? abertas.map(cartaoTarefa) : h('p', { class: 'ok-linha' }, icone('check'), 'Nenhuma tarefa pendente aqui.'),
+    feitas.length ? h('details', { class: 'cartao tarefas-concluidas' }, h('summary', {}, `Concluídas (${feitas.length})`), feitas.map(cartaoTarefa)) : null);
 }
 
 function numeros() {
