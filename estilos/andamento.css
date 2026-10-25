@@ -19,4 +19,9 @@
 .and-alteracao code { white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; }
 .and-propostas { display:grid; gap:10px; }
 .and-proposta { width:100%; text-align:left; display:grid; gap:8px; }
+.and-revisao { margin-top:16px; padding:16px; border:1px solid var(--brand-text); background:var(--brand-soft); border-radius:16px; }
+.and-revisao .acoes { display:flex; flex-wrap:wrap; gap:10px; }
+.and-comentarios { display:grid; gap:14px; }
+.and-comentarios small { display:block; color:var(--text-2); }
+.and-comentarios textarea { width:100%; min-height:100px; font-size:16px; }
 @media(min-width:700px) { .and-midias, .and-filtros { grid-template-columns:repeat(2,minmax(0,1fr)); } }

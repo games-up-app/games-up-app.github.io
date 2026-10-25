@@ -102,7 +102,7 @@ export function fazerHoje(dados, usuario, { propostaId, horario, desfazer = fals
 /** Comentários: proprietário e equipe. */
 export function comentar(dados, usuario, { alvoTipo, alvoId, texto }) {
   if (!['proprietario', 'equipe'].includes(usuario?.papel)) throw new ErroRegra(403, 'Sem permissão.');
-  if (!['proposta', 'tarefa', 'lancamento', 'thumbnail'].includes(alvoTipo)) throw new ErroRegra(400, 'Alvo inválido.');
+  if (!['proposta', 'tarefa', 'lancamento', 'thumbnail', 'andamento'].includes(alvoTipo)) throw new ErroRegra(400, 'Alvo inválido.');
   if (typeof alvoId !== 'string' || !/^[A-Za-z0-9\-_.]{1,64}$/.test(alvoId)) throw new ErroRegra(400, 'Identificador inválido.');
   const t = limparTexto(texto);
   if (!t) throw new ErroRegra(400, 'Comentário vazio.');

@@ -3,6 +3,7 @@
 // privado (RepoGitHub) com o token do proprietário. Quem tem o token é o proprietário.
 import { ErroRegra, STATUS, decidirProposta, fazerHoje, comentar, atualizarTarefa, decidirLancamento, alterarConfig } from './regras.js';
 import { validarIdeia } from './ideias.js';
+import { decidirEtapa } from './revisao-etapas.js';
 
 const ARQUIVOS = ['meta', 'metricas', 'ideias', 'andamento', 'analytics', 'jogo', 'concorrentes', 'noticias', 'thumbnails', 'propostas', 'tarefas', 'tendencias', 'discord', 'lancamentos', 'comentarios', 'config', 'saude-agendamentos', 'relatorios/indice', 'executor', 'push/inscricoes'];
 
@@ -30,7 +31,7 @@ export function criarApi({ store, usuario, assinar = null, papel = 'proprietario
   const eu = { id: usuario.id, nome: usuario.nome, papel: papel === 'equipe' ? 'equipe' : 'proprietario' };
   // No modo Equipe só estas ações existem. O GitHub também impede: a equipe só tem leitura nos dados.
   const PERMITIDAS_EQUIPE = new Set(['GET /api/painel', 'GET /api/relatorio', 'POST /api/comentarios']);
-  const MARCA = /^\[(proposta|tarefa|lancamento|thumbnail):([A-Za-z0-9\-_.]{1,64})\]\s*([\s\S]*)$/;
+  const MARCA = /^\[(proposta|tarefa|lancamento|thumbnail|andamento):([A-Za-z0-9\-_.]{1,64})\]\s*([\s\S]*)$/;
 
   /** Comentários da equipe guardados no tópico de Issues, no mesmo formato de comentarios.json. */
   async function comentariosDaEquipe() {
@@ -122,6 +123,24 @@ export function criarApi({ store, usuario, assinar = null, papel = 'proprietario
       return { ok: true, ...r };
     },
 
+    'POST /api/andamento/decisao': async corpo => {
+      const c = texto(corpo);
+      const r = await store.transacao(async tx => {
+        const andamento = await tx.ler('andamento.json');
+        const { registro, evento } = decidirEtapa(andamento, eu, c);
+        if (c.acao === 'ajustes' || c.acao === 'negar') {
+          const lista = (await tx.ler('comentarios.json')) || { itens: [] };
+          const ret = comentar(lista, eu, { alvoTipo: 'andamento', alvoId: c.registroId, texto: c.comentario });
+          tx.gravar('comentarios.json', lista);
+          await auditar(tx, ret.evento);
+        }
+        tx.gravar('andamento.json', andamento);
+        await auditar(tx, evento);
+        return registro;
+      }, `painel: ${c.acao} etapa ${c.registroId}`);
+      return { ok: true, registro: r };
+    },
+
     'POST /api/comentarios': async corpo => {
       const c = texto(corpo);
       if (eu.papel === 'equipe') {
@@ -132,6 +151,7 @@ export function criarApi({ store, usuario, assinar = null, papel = 'proprietario
         return { ok: true, comentario };
       }
       const r = await store.transacao(async tx => {
+        if (c.alvoTipo === 'andamento' && !(await tx.ler('andamento.json'))?.registros?.some(r => r.id === c.alvoId)) throw new ErroRegra(404, 'Etapa não encontrada.');
         const lista = (await tx.ler('comentarios.json')) || { itens: [] };
         const { comentario, evento } = comentar(lista, eu, c);
         tx.gravar('comentarios.json', lista);
