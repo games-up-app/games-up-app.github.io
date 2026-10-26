@@ -1,11 +1,13 @@
 // Tela Início: boas-vindas, jogo ao vivo, semana, notícia do dia, o que precisa de você e resumo.
 // Subpágina "noticias" (estado.sub.inicio === 'noticias'): todas as notícias com filtros.
-import { h, icone, chip, iconeDoTipo, abrirFolha } from '../ui/componentes.js?v=20261025-etapas2';
-import { ctx } from '../ui/contexto.js?v=20261025-etapas2';
+import { h, icone, chip, iconeDoTipo, abrirFolha } from '../ui/componentes.js?v=20261025-comunicacao3';
+import { ctx } from '../ui/contexto.js?v=20261025-comunicacao3';
+import { resumoAtualizacao, listarAvisos, novosAvisos, lerAvisosLidos, marcarAvisoLido, dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261025-comunicacao3';
+import { avaliarPresenca } from '../nucleo/presenca.js?v=20261025-comunicacao3';
 import {
   FUSO, num, pct, compacto, dataBR, horaBR, haQuanto, textoCurto, urlSegura, botaoLink, imagemExterna, miniaturaIcone,
   cabecalhoSecao, botaoTexto, topoSubpagina, filtrosChips, campo, blocoNumero, miniGrafico, chipStatus, cardClicavel, cardBotao,
-} from './comum.js?v=20261025-etapas2';
+} from './comum.js?v=20261025-comunicacao3';
 
 const d = () => ctx.estado.dados || {};
 
@@ -73,6 +75,8 @@ function atividadesDoDia(ymd) {
   const dados = d();
   const itens = [];
   const add = (hora, titulo, cat, quem, detalhe = null, acao = null, destaque = false) => itens.push({ hora, titulo, cat, quem, detalhe, acao, destaque });
+  (dados.tarefas?.tarefas || []).filter(t => t.agendadaPara?.slice(0, 10) === ymd && t.status !== 'CONCLUÍDA').forEach(t =>
+    add(t.agendadaPara.slice(11, 16), t.titulo, 'desenvolvimento', 'Equipe', t.descricao, () => ctx.irPara('tarefas'), true));
 
   // Itens concretos de hoje: o que espera por você e o que está sendo feito.
   if (hoje) {
@@ -488,11 +492,56 @@ function saudacao() {
 }
 
 // ------------------------------------------------------------------ tela
+export function cardSuaAtualizacao() {
+  const r = resumoAtualizacao(d());
+  const avisos = listarAvisos(d());
+  const novos = novosAvisos(avisos, lerAvisosLidos(ctx.estado.usuario)).length;
+  const abrirEvidencias = () => {
+    if (!r.evidencia) return;
+    const aviso = avisos.find(a => a.registroId === r.evidencia.id);
+    if (aviso) marcarAvisoLido(ctx.estado.usuario, aviso);
+    ctx.irPara('andamento', { id: r.evidencia.id });
+  };
+  return h('section', { class: 'card sua-atualizacao', 'aria-label': 'Sua atualização' },
+    h('p', { class: 'atualizacao-rotulo' }, icone('sino'), 'Sua atualização'),
+    h('h2', {}, `${r.lancamento?.propostaIds?.join(', ') || r.ultimo?.propostaId || ''}${r.lancamento || r.ultimo ? ' · ' : ''}${r.titulo}`),
+    h('p', { class: 'sinc' }, dataHoraBrasilia(r.em)),
+    h('div', { class: 'atualizacao-proximo' }, h('strong', {}, 'Próximo passo'), h('p', {}, r.proximoPasso)),
+    h('p', { class: 'atualizacao-evidencias' }, `${r.imagens} ${r.imagens === 1 ? 'imagem' : 'imagens'} · ${r.videos} ${r.videos === 1 ? 'vídeo' : 'vídeos'} · ${r.etapasConcluidas} ${r.etapasConcluidas === 1 ? 'etapa concluída' : 'etapas concluídas'}`),
+    r.evidencia ? h('button', { class: 'btn primario atualizacao-ver', type: 'button', onclick: abrirEvidencias }, icone('play'), 'VER IMAGENS E VÍDEOS')
+      : h('p', { class: 'sinc' }, 'Ainda não há imagens ou vídeos registrados para esta atualização.'),
+    h('div', { class: 'atualizacao-acoes' },
+      r.ultimo ? h('button', { type: 'button', class: 'btn', onclick: () => ctx.irPara('andamento', { id: r.ultimo.id, comentar: true }) }, icone('chat'), 'Comentar esta atualização') : null,
+      h('button', { type: 'button', class: 'btn', onclick: () => ctx.irPara(r.decisao.aba, r.decisao.sub) }, icone('decisoes'), 'Decisões'),
+      h('button', { type: 'button', class: 'btn', onclick: () => ctx.irPara('avisos') }, icone('sino'), `Avisos${novos ? ` (${novos} novos)` : ''}`)));
+}
+
+export function presencaEquipe() {
+  const lista = h('div', { class: 'presenca-lista', 'aria-live': 'polite' });
+  const atualizar = () => lista.replaceChildren(...['codex', 'claude'].map(id => {
+      const nome = id === 'codex' ? 'Codex' : 'Claude';
+      const p = avaliarPresenca(d().presenca?.itens?.[id]);
+      return h('div', { class: `presenca-item ${p.estado}` },
+        h('span', { class: 'presenca-avatar', 'aria-hidden': 'true' }, nome[0], h('img', { src: id === 'claude' ? 'marca/claude.ico' : 'marca/codex.svg', alt: '', onerror: e => { e.target.hidden = true; } })),
+        h('div', {}, h('strong', {}, p.estado === 'sem_sinal' ? nome : `${nome} ${p.texto}`),
+          p.estado === 'sem_sinal' ? h('p', { class: 'sinc' }, p.texto) : null,
+          p.atividade ? h('p', {}, p.atividade) : null,
+          p.atualizadoEm ? h('p', { class: 'sinc' }, `Sinal: ${dataHoraBrasilia(p.atualizadoEm)}`) : null));
+    }));
+  atualizar();
+  const secao = h('section', { class: 'presenca-equipe', 'aria-label': 'Atividade da equipe' }, h('h2', {}, 'Equipe agora'), lista,
+    h('button', { type: 'button', class: 'btn', onclick: () => ctx.irPara('ideias') }, icone('lampada'), 'Enviar sugestão'));
+  const timer = setInterval(() => { if (!secao.isConnected) clearInterval(timer); else atualizar(); }, 30_000);
+  return secao;
+}
+
 export function telaInicio() {
   if (ctx.estado.sub.inicio === 'noticias') return paginaNoticias();
   buscarAoVivo();
   return h('div', { class: 'pagina-inicio' },
     saudacao(),
+    cardSuaAtualizacao(),
+    presencaEquipe(),
     cardBotao('card-atalho atalho-ideia', () => ctx.irPara('ideias'), h('span', { class: 'resumo-icone tom-amarelo' }, icone('lampada', { tamanho: 24 })), h('span', { class: 'atalho-texto' }, h('strong', {}, 'Enviar ideia ou sugestão'), h('span', {}, 'Thumbnail, descrição, nome ou melhoria do jogo')), icone('direita')),
     precisaDeVoce(),
     cardJogo(),

@@ -14,6 +14,7 @@ export function validarRegistro(r) {
   if (!r || typeof r !== 'object') throw new Error('Registro inválido.');
   if (!/^P-\d{3,5}$/.test(r.propostaId || '')) throw new Error('Informe a proposta do registro.');
   if (!TIPOS_ANDAMENTO.includes(r.tipo)) throw new Error('Categoria de andamento inválida.');
+  if (r.estadoEtapa != null && !['iniciada', 'em_producao', 'concluida', 'impedida'].includes(r.estadoEtapa)) throw new Error('Estado da etapa inválido.');
   for (const k of ['titulo', 'descricao']) if (typeof r[k] !== 'string' || !r[k].trim() || r[k].length > (k === 'titulo' ? 150 : 4000)) throw new Error(`Campo ${k} inválido.`);
   if (r.em && (!/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:\d{2})$/.test(r.em) || !Number.isFinite(Date.parse(r.em)) || Date.parse(r.em) > Date.now() + 300000)) throw new Error('Data do registro inválida ou futura.');
   if (!Array.isArray(r.alteracoes) || r.alteracoes.length > 30) throw new Error('Informe as alterações no Explorer.');

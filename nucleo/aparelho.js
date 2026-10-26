@@ -1,7 +1,7 @@
 // Guarda no aparelho (IndexedDB) o token do GitHub e a chave de autorização.
 // A chave de autorização é NÃO exportável: o navegador usa, mas ninguém consegue copiá-la.
-import { gerarChaveDispositivo, assinarObjeto } from './assinatura.js?v=20261025-etapas2';
-import { criarPedidoCadastro, validarPedidoCadastro, impressaoDigitalDaChave, codigoDaImpressaoDigital, lerRegistroDeAparelhos } from './cadastro-aparelho.js?v=20261025-etapas2';
+import { gerarChaveDispositivo, assinarObjeto } from './assinatura.js?v=20261025-comunicacao3';
+import { criarPedidoCadastro, validarPedidoCadastro, impressaoDigitalDaChave, codigoDaImpressaoDigital, lerRegistroDeAparelhos } from './cadastro-aparelho.js?v=20261025-comunicacao3';
 
 const BANCO = 'central-eb';
 const LOJA = 'aparelho';

@@ -15,13 +15,15 @@ function urlSegura(u) {
 self.addEventListener('push', e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch { d = { titulo: 'Games Up', texto: e.data && e.data.text() }; }
-  e.waitUntil(self.registration.showNotification(d.titulo || 'Games Up', {
+  e.waitUntil(Promise.all([self.registration.showNotification(d.titulo || 'Games Up', {
     body: d.texto || '',
     icon: 'icones/icone-192.png',
     badge: 'icones/icone-192.png',
     data: { url: urlSegura(d.url) },
     lang: 'pt-BR',
-  }));
+  }), self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(abertas => {
+    for (const c of abertas) if (c.url.startsWith(self.registration.scope)) c.postMessage({ tipo: 'games-up:novidade' });
+  }).catch(() => {})]));
 });
 
 self.addEventListener('notificationclick', e => {

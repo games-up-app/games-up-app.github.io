@@ -6,7 +6,7 @@
 // Se outro processo gravou antes (a branch não avança em fast-forward), relê e tenta de novo.
 
 const CAMINHO_VALIDO = /^[a-z0-9][a-z0-9\-_/]*\.json$/;
-import { MIDIA_ANDAMENTO } from './andamento.js?v=20261025-etapas2';
+import { MIDIA_ANDAMENTO } from './andamento.js?v=20261025-comunicacao3';
 // Só imagens comuns (SVG pode carregar código; fica de fora).
 const PREVIA_VALIDA = /^previas\/[a-z0-9][a-z0-9\-_/]*\.(png|jpg|jpeg|webp)$/;
 const TIPOS_IMAGEM = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' };
@@ -45,6 +45,7 @@ export class RepoGitHub {
       },
       body: corpo ? JSON.stringify(corpo) : undefined,
       cache: 'no-store',
+      signal: AbortSignal.timeout(20_000),
     });
     if (r.status === 401) throw new ErroGitHub(401, 'Token inválido ou expirado. Entre de novo com um token novo.');
     if (r.status === 403) {

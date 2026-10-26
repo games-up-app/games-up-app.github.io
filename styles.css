@@ -558,3 +558,10 @@ button.atividade { cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+.barra-acompanhamento { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
+.barra-acompanhamento > span { color: var(--text-2); font-size: .8rem; flex: 1 1 200px; }
+.barra-acompanhamento .btn { min-height: 44px; }
+.barra-acompanhamento .bad { color: var(--bad); }
+.dados-novos { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 12px; right: 12px; z-index: 10000; padding: 14px; border: 2px solid var(--brand-text); border-radius: 16px; background: var(--surface); color: var(--text); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; box-shadow: var(--sombra); }
+.dados-novos strong { flex: 1 1 240px; }

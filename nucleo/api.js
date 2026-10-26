@@ -1,11 +1,11 @@
 // "API" do painel rodando no próprio navegador.
 // Mantém as mesmas rotas da versão com servidor, mas lê e grava direto no repositório
 // privado (RepoGitHub) com o token do proprietário. Quem tem o token é o proprietário.
-import { ErroRegra, STATUS, decidirProposta, fazerHoje, comentar, atualizarTarefa, decidirLancamento, alterarConfig } from './regras.js?v=20261025-etapas2';
-import { validarIdeia } from './ideias.js?v=20261025-etapas2';
-import { decidirEtapa } from './revisao-etapas.js?v=20261025-etapas2';
+import { ErroRegra, STATUS, decidirProposta, fazerHoje, comentar, atualizarTarefa, decidirLancamento, alterarConfig } from './regras.js?v=20261025-comunicacao3';
+import { validarIdeia } from './ideias.js?v=20261025-comunicacao3';
+import { decidirEtapa } from './revisao-etapas.js?v=20261025-comunicacao3';
 
-const ARQUIVOS = ['meta', 'metricas', 'ideias', 'andamento', 'analytics', 'jogo', 'concorrentes', 'noticias', 'thumbnails', 'propostas', 'tarefas', 'tendencias', 'discord', 'lancamentos', 'comentarios', 'config', 'saude-agendamentos', 'relatorios/indice', 'executor', 'push/inscricoes'];
+const ARQUIVOS = ['meta', 'metricas', 'ideias', 'andamento', 'analytics', 'jogo', 'concorrentes', 'noticias', 'thumbnails', 'propostas', 'tarefas', 'tendencias', 'discord', 'lancamentos', 'comentarios', 'config', 'saude-agendamentos', 'relatorios/indice', 'executor', 'presenca', 'push/inscricoes', 'push/confirmacoes'];
 
 function mes(d) { return d.toISOString().slice(0, 7); }
 

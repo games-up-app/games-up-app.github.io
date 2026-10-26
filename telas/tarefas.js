@@ -1,7 +1,7 @@
 // Tela Tarefas: cards com progresso. Detalhes e atualização abrem numa folha (nada expande para baixo).
-import { h, icone, chip, abrirFolha } from '../ui/componentes.js?v=20261025-etapas2';
-import { ctx } from '../ui/contexto.js?v=20261025-etapas2';
-import { dataBR, haQuanto, segmentado, campo, chipStatus, cardBotao, blocoComentarios, miniaturaIcone } from './comum.js?v=20261025-etapas2';
+import { h, icone, chip, abrirFolha } from '../ui/componentes.js?v=20261025-comunicacao3';
+import { ctx } from '../ui/contexto.js?v=20261025-comunicacao3';
+import { dataBR, haQuanto, segmentado, campo, chipStatus, cardBotao, blocoComentarios, miniaturaIcone } from './comum.js?v=20261025-comunicacao3';
 
 const STATUS = ['A FAZER', 'EM DESENVOLVIMENTO', 'EM TESTES', 'CONCLUÍDA', 'IMPEDIDA'];
 const ROTULO = { 'A FAZER': 'A fazer', 'EM DESENVOLVIMENTO': 'Fazendo', 'EM TESTES': 'Testando', 'CONCLUÍDA': 'Concluída', 'IMPEDIDA': 'Travada' };
@@ -71,6 +71,7 @@ function cardTarefa(t) {
     h('span', { class: 'tarefa-texto' },
       h('span', { class: 'tarefa-id' }, t.id),
       h('strong', {}, t.titulo),
+      t.agendadaPara ? h('span', { class: 'sinc' }, `Agendada: ${dataBR(t.agendadaPara)} · Brasília`) : null,
       h('span', { class: 'chips-linha' }, chipStatus(t.status), total ? chip(`${feitos}/${total} passos`, { iconeNome: 'tarefas' }) : null),
       h('span', { class: 'barra' }, h('span', { style: { width: `${Math.max(0, Math.min(100, t.progresso || 0))}%` } }))),
     icone('direita', { tamanho: 20 }));

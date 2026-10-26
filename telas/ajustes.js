@@ -1,7 +1,7 @@
 // Tela Ajustes: conta, publicações (pausa, dia e horário), chave de autorização, celular e atalhos.
-import { h, icone, chip, interruptor, botaoCopiar, abrirFolha } from '../ui/componentes.js?v=20261025-etapas2';
-import { ctx } from '../ui/contexto.js?v=20261025-etapas2';
-import { dataBR, haQuanto, cabecalhoSecao, segmentado, campo, chipStatus, cardBotao, rotuloStatus } from './comum.js?v=20261025-etapas2';
+import { h, icone, chip, interruptor, botaoCopiar, abrirFolha } from '../ui/componentes.js?v=20261025-comunicacao3';
+import { ctx } from '../ui/contexto.js?v=20261025-comunicacao3';
+import { dataBR, haQuanto, cabecalhoSecao, segmentado, campo, chipStatus, cardBotao, rotuloStatus } from './comum.js?v=20261025-comunicacao3';
 
 const d = () => ctx.estado.dados || {};
 
@@ -109,17 +109,25 @@ function cartaoCelular() {
         : ['No Chrome: menu de três pontinhos e ', h('strong', {}, 'Adicionar à tela inicial'), '.'])));
     }
   }
-  let linha;
-  if (e.pushAtivo == null) linha = h('p', { class: 'sinc' }, 'Conferindo notificações deste aparelho…');
-  else if (e.pushAtivo) {
-    const off = h('button', { type: 'button', class: 'btn discreto', onclick: () => cel.desativar(off) }, icone('fechar', { tamanho: 18 }), 'Desativar');
-    linha = [h('div', { class: 'linha-status' }, h('span', { class: 'resumo-icone tom-verde' }, icone('sino', { tamanho: 20 })), h('span', { class: 'atalho-texto' }, h('strong', {}, 'Notificações ligadas'), h('span', {}, 'Você recebe avisos neste aparelho.')), chip('Ativado', { tom: 'ok' })),
-      h('div', { class: 'acoes' }, h('button', { type: 'button', class: 'btn', onclick: () => cel.exemplo().catch(err => ctx.avisar(err.message, true)) }, icone('sino', { tamanho: 18 }), 'Ver exemplo'), off)];
-  } else {
-    const b = h('button', { type: 'button', class: 'btn primario', onclick: () => cel.ativar(b) }, icone('sino', { tamanho: 18 }), 'Ativar notificações');
-    linha = [h('div', { class: 'linha-status' }, h('span', { class: 'resumo-icone tom-amarelo' }, icone('sino', { tamanho: 20 })), h('span', { class: 'atalho-texto' }, h('strong', {}, 'Notificações desligadas'), h('span', {}, 'Avisos de proposta nova, atualização pronta, relatório e falhas.')), chip('Desativado', { tom: 'warn' })), b];
-  }
-  return h('section', { class: 'card' }, cabecalhoSecao('interface', 'Este celular'), itens, linha);
+  const diag = e.pushDiagnostico;
+  const ativar = h('button', { type: 'button', class: 'btn primario', onclick: () => cel.ativar(ativar) }, icone('sino', { tamanho: 18 }), 'Ativar / reconectar avisos');
+  const conferir = h('button', { type: 'button', class: 'btn', onclick: async () => {
+    conferir.disabled = true;
+    try { await cel.conferir(); } catch (err) { ctx.avisar(err.message, true); conferir.disabled = false; }
+  } }, icone('atualizar', { tamanho: 18 }), 'Verificar novamente');
+  const off = h('button', { type: 'button', class: 'btn discreto', onclick: () => cel.desativar(off) }, icone('fechar', { tamanho: 18 }), 'Desativar neste aparelho');
+  return h('section', { class: 'card', id: 'notificacoes-aparelho' }, cabecalhoSecao('sino', 'Notificações neste aparelho'), itens,
+    h('div', { class: `faixa ${diag?.estado === 'envio_confirmado' ? 'ok' : 'warn'}`, role: 'status' }, icone('sino', { tamanho: 22 }),
+      h('div', {}, h('strong', {}, diag?.titulo || 'Conferindo notificações…'), h('p', {}, diag?.texto || 'Aguarde a conferência deste aparelho.'))),
+    diag?.confirmadoEm ? h('p', { class: 'sinc' }, `Primeiro envio aceito pelo serviço: ${dataBR(diag.confirmadoEm)}.`) : null,
+    h('div', { class: 'acoes' }, diag?.acao === 'ativar' ? ativar : null, conferir,
+      diag?.ativo ? h('button', { type: 'button', class: 'btn', onclick: () => cel.exemplo().catch(err => ctx.avisar(err.message, true)) }, icone('sino', { tamanho: 18 }), 'Testar aviso só neste celular') : null,
+      diag?.ativo ? off : null),
+    h('p', { class: 'sinc' }, 'O teste local não verifica o envio da automação. Não é necessário manter o app aberto para receber push.'),
+    h('div', { class: 'ajuste-bloco' }, h('strong', {}, 'Menos interrupções'),
+      h('p', {}, 'No desenvolvimento, só etapas concluídas geram push. Você também recebe os pedidos de decisão e o resultado da publicação. Os bastidores ficam no Andamento.'),
+      h('p', { class: 'sinc' }, 'Entre 23h e 7h (Brasília), os avisos de novidades aguardam a manhã. No modo Foco ou com notificações silenciadas, o celular pode não mostrar o alerta.'),
+      h('button', { type: 'button', class: 'btn', onclick: () => ctx.irPara('avisos') }, icone('olho', { tamanho: 18 }), 'Ver avisos dentro do app')));
 }
 
 // ------------------------------------------------------------------ atalhos que abrem folhas

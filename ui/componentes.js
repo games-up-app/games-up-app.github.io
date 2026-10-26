@@ -32,6 +32,7 @@ export function s(tag, attrs = {}, ...filhos) {
 
 // Cada ícone: lista de "d" de paths (viewBox 24x24, traço 2). Alguns usam círculos (c:cx,cy,r).
 const ICONES = {
+  atualizar: ['M20 7v5h-5', 'M4 17v-5h5', 'M6.1 7a7 7 0 0 1 11.6-2L20 8', 'M4 16l2.3 3A7 7 0 0 0 18 17'],
   grade: ['M3 3h7v7H3z', 'M14 3h7v7h-7z', 'M3 14h7v7H3z', 'M14 14h7v7h-7z'],
   inicio: ['M3 10.5 12 3l9 7.5', 'M5 9.5V21h5v-6h4v6h5V9.5'],
   decisoes: ['M9 11l3 3 8-8', 'M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9'],
@@ -111,7 +112,7 @@ function camada(tipo, { titulo, conteudo, rodape = null, aoFechar = null, classe
   const fechar = () => {
     if (!caixa.isConnected) return;
     caixa.classList.add('saindo'); fundo.classList.add('saindo');
-    setTimeout(() => { caixa.remove(); fundo.remove(); }, 220);
+    setTimeout(() => { caixa.remove(); fundo.remove(); window.dispatchEvent(new CustomEvent('gamesup:camadafechada')); }, 220);
     const i = pilha.indexOf(fechar); if (i >= 0) pilha.splice(i, 1);
     if (!pilha.length) travarRolagem(false);
     aoFechar?.();
@@ -159,7 +160,7 @@ export function abrirFolha(opcoes) { return camada('folha', opcoes); }
 /** Janela central com fundo escuro (no celular ocupa quase a tela toda). */
 export function abrirModal(opcoes) { return camada('modal', opcoes); }
 export function fecharTudo() { [...pilha].reverse().forEach(f => f()); }
-/** true quando há folha ou janela aberta (a atualização automática espera fechar). */
+/** true quando há folha ou janela aberta (preserva mídia e rascunhos na atualização). */
 export const temCamadaAberta = () => pilha.length > 0;
 window.addEventListener('keydown', e => { if (e.key === 'Escape' && pilha.length) pilha.at(-1)(); });
 

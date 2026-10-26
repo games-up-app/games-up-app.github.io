@@ -4,22 +4,25 @@
 // A publicação no jogo exige a assinatura feita pela chave deste aparelho (ver nucleo/).
 // Este arquivo cuida de: entrar, carregar os dados, barra de abas, notificações e o objeto ctx.
 // Cada tela fica em painel/telas/*.js e só usa o ctx.
-import { CONFIG } from './config.js?v=20261025-etapas2';
-import { RepoGitHub } from './nucleo/github.js?v=20261025-etapas2';
-import { criarApi } from './nucleo/api.js?v=20261025-etapas2';
-import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js?v=20261025-etapas2';
-import { chavePublicaVapid } from './nucleo/vapid.js?v=20261025-etapas2';
-import { ativarNoAparelho, notificacoesAtivas } from './nucleo/notificacoes.js?v=20261025-etapas2';
-import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js?v=20261025-etapas2';
-import { ctx } from './ui/contexto.js?v=20261025-etapas2';
-import { telaInicio } from './telas/inicio.js?v=20261025-etapas2';
-import { telaDecisoes } from './telas/decisoes.js?v=20261025-etapas2';
-import { telaNumeros } from './telas/numeros.js?v=20261025-etapas2';
-import { telaPesquisa } from './telas/pesquisa.js?v=20261025-etapas2';
-import { telaAjustes } from './telas/ajustes.js?v=20261025-etapas2';
-import { telaTarefas } from './telas/tarefas.js?v=20261025-etapas2';
-import { telaAndamento } from './telas/andamento.js?v=20261025-etapas2';
-import { telaIdeias } from './telas/ideias.js?v=20261025-etapas2';
+import { CONFIG } from './config.js?v=20261025-comunicacao3';
+import { RepoGitHub } from './nucleo/github.js?v=20261025-comunicacao3';
+import { criarApi } from './nucleo/api.js?v=20261025-comunicacao3';
+import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js?v=20261025-comunicacao3';
+import { chavePublicaVapid } from './nucleo/vapid.js?v=20261025-comunicacao3';
+import { ativarNoAparelho, diagnosticarNotificacoes } from './nucleo/notificacoes.js?v=20261025-comunicacao3';
+import { criarSincronizacao } from './nucleo/sincronizacao.js?v=20261025-comunicacao3';
+import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js?v=20261025-comunicacao3';
+import { ctx } from './ui/contexto.js?v=20261025-comunicacao3';
+import { telaInicio } from './telas/inicio.js?v=20261025-comunicacao3';
+import { telaDecisoes } from './telas/decisoes.js?v=20261025-comunicacao3';
+import { telaNumeros } from './telas/numeros.js?v=20261025-comunicacao3';
+import { telaPesquisa } from './telas/pesquisa.js?v=20261025-comunicacao3';
+import { telaAjustes } from './telas/ajustes.js?v=20261025-comunicacao3';
+import { telaTarefas } from './telas/tarefas.js?v=20261025-comunicacao3';
+import { telaAndamento } from './telas/andamento.js?v=20261025-comunicacao3';
+import { telaIdeias } from './telas/ideias.js?v=20261025-comunicacao3';
+import { telaAvisos } from './telas/avisos.js?v=20261025-comunicacao3';
+import { listarAvisos, novosAvisos, lerAvisosLidos } from './nucleo/central-avisos.js?v=20261025-comunicacao3';
 
 const estado = { usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null, pushAtivo: null };
 // Os dados ficam na organização games-up-app: o token precisa ter ela como "Resource owner".
@@ -40,6 +43,7 @@ const ABAS = [
 // Páginas que não estão na barra: abrem por atalhos e mostram "voltar".
 const PAGINAS = [
   { id: 'tarefas', nome: 'Tarefas', icone: 'tarefas', tela: telaTarefas, pai: 'inicio' },
+  { id: 'avisos', nome: 'Avisos', icone: 'sino', tela: telaAvisos, pai: 'inicio' },
 ];
 const TODAS = [...ABAS, ...PAGINAS];
 const PRINCIPAIS_CELULAR = ['inicio', 'decisoes', 'andamento', 'ideias'];
@@ -129,6 +133,8 @@ async function iniciar() {
   const busca = new URLSearchParams(location.search);
   const pedida = busca.get('aba');
   const noticias = busca.get('noticias') === '1';
+  const alvoId = /^[A-Za-z0-9_-]{1,100}$/.test(busca.get('id') || '') ? busca.get('id') : null;
+  const alvoTipo = ['proposta', 'lancamento'].includes(busca.get('tipo')) ? busca.get('tipo') : null;
   if (pedida || noticias) history.replaceState(null, '', location.pathname);
   let token = null;
   try { token = await lerToken(); } catch {}
@@ -138,6 +144,8 @@ async function iniciar() {
     try { estado.aba = pedida || sessionStorage.getItem('eb-aba') || 'inicio'; } catch {}
     if (!TODAS.some(a => a.id === estado.aba)) estado.aba = 'inicio';
     if (noticias) { estado.aba = 'inicio'; estado.sub.inicio = 'noticias'; }
+    if (alvoId && pedida === 'andamento') estado.sub.andamento = { id: alvoId };
+    if (alvoId && pedida === 'decisoes' && alvoTipo) estado.sub.decisoes = { tipo: alvoTipo, id: alvoId };
     await carregar();
   } catch (e) {
     if (e.status === 401 || e.status === 403 || e.status === 404) { await esquecerToken().catch(() => {}); return telaLogin(e.message); }
@@ -166,44 +174,72 @@ async function entrar(token) {
 }
 
 async function carregar() {
-  const sha = await shaDados();
-  const p = await api('/api/painel');
-  if (sha) ultimoSha = sha;
-  estado.usuario = p.usuario; estado.dados = p.dados;
-  estado.pushAtivo = null;
-  render();
+  const ok = await sincronizacao.conferir({ forcar: true });
+  if (!ok) throw new Error('Não consegui atualizar os dados. Confira a conexão e tente novamente.');
   await conferirNotificacoes();
-  render();
+  if (!temCamadaAberta() && !temEdicao()) render();
 }
 
-// Atualização automática com o app ABERTO: a cada 30 s confere se a branch de dados mudou (1 pedido leve)
-// e só então relê tudo. Se houver folha/janela aberta ou o dono estiver digitando, espera fechar.
-let ultimoSha = null, atualizacaoPendente = false, atualizando = false;
+// Com o app visível, confere mudanças a cada 10 s. Os dados chegam mesmo com detalhes abertos;
+// o texto digitado e a reprodução de mídia são preservados.
+let telaPendente = false;
+function temEdicao() {
+  return ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) ||
+    [...document.querySelectorAll('textarea, input:not([type=checkbox]):not([type=radio])')].some(e => e.value !== e.defaultValue);
+}
 async function shaDados() {
   const r = estado.repo;
   if (!r?.req) return null;
-  try { return (await r.req('GET', `/repos/${r.repo}/git/ref/heads/${encodeURIComponent(r.branch)}`))?.object?.sha || null; } catch { return null; }
+  return (await r.req('GET', `/repos/${r.repo}/git/ref/heads/${encodeURIComponent(r.branch)}`))?.object?.sha || null;
 }
-async function atualizarSozinho() {
-  if (atualizando || document.hidden || !estado.dados) return;
-  atualizando = true;
-  try {
-    const sha = await shaDados();
-    if (sha && ultimoSha && sha !== ultimoSha) atualizacaoPendente = true;
-    if (sha) ultimoSha = sha;
-    if (!atualizacaoPendente) return;
-    if (temCamadaAberta() || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
-    const p = await api('/api/painel');
+function atualizarIndicador() {
+  const el = document.getElementById('estado-sincronizacao');
+  if (!el) return;
+  el.textContent = estado.erroSincronizacao ? 'Sem atualização · dados podem estar antigos' : estado.conferidoEm
+    ? `Conferido às ${new Date(estado.conferidoEm).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit' })} · Brasília` : 'Conferindo dados…';
+  el.classList.toggle('bad', !!estado.erroSincronizacao);
+}
+function mostrarDadosNovos(antes, depois) {
+  document.getElementById('dados-novos')?.remove();
+  const publicadas = (depois.lancamentos?.lancamentos || []).filter(l => l.status === 'PUBLICADA' &&
+    !(antes?.lancamentos?.lancamentos || []).some(a => a.id === l.id && a.status === 'PUBLICADA'));
+  const mensagem = publicadas.length ? `${publicadas[0].id}: publicação confirmada. Esta janela mostra uma versão anterior.`
+    : 'Chegaram novas informações. Esta janela pode estar desatualizada; seu texto foi preservado.';
+  document.body.append(h('aside', { id: 'dados-novos', class: 'dados-novos', role: 'status' },
+    h('strong', {}, mensagem), h('button', { class: 'btn primario', type: 'button', onclick: () => {
+      const rascunho = [...document.querySelectorAll('.camada-corpo textarea, .camada-corpo input:not([type=checkbox])')].some(e => e.value?.trim());
+      if (rascunho && !confirm('Você está escrevendo. Abrir os dados atuais fecha esta janela e descarta o texto não enviado. Deseja continuar?')) return;
+      fecharTudo(); document.getElementById('dados-novos')?.remove(); render();
+    } }, 'Ver estado atualizado')));
+}
+const sincronizacao = criarSincronizacao({ lerSha: shaDados, lerPainel: () => api('/api/painel'),
+  adiarTela: () => temCamadaAberta() || temEdicao(),
+  aplicar: async (p, { adiar, mudou }) => {
+    const antes = estado.dados;
     estado.usuario = p.usuario; estado.dados = p.dados;
-    const y = window.scrollY;
-    render();
-    window.scrollTo(0, y);
-    atualizacaoPendente = false;
-  } catch { /* sem rede: tenta de novo na próxima volta */ } finally { atualizando = false; }
+    window.dispatchEvent(new CustomEvent('gamesup:dadosatualizados'));
+    if (adiar && mudou) { telaPendente = true; mostrarDadosNovos(antes, p.dados); }
+    else { telaPendente = false; const y = window.scrollY; render(); window.scrollTo(0, y); }
+    // Diagnóstico não bloqueia a leitura de publicações e entregas.
+    conferirNotificacoes().then(() => { if (estado.aba === 'ajustes' && !temCamadaAberta() && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) render(); });
+  },
+  atualizado: em => { estado.conferidoEm = em; estado.erroSincronizacao = null; atualizarIndicador(); },
+  falhou: erro => { estado.erroSincronizacao = erro.message; atualizarIndicador(); },
+});
+async function atualizarSozinho() {
+  if (document.hidden || !estado.dados) return;
+  await sincronizacao.conferir();
 }
-setInterval(atualizarSozinho, 30_000);
+setInterval(atualizarSozinho, 10_000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) atualizarSozinho(); });
 window.addEventListener('focus', () => atualizarSozinho());
+window.addEventListener('online', () => atualizarSozinho());
+navigator.serviceWorker?.addEventListener('message', e => { if (e.data?.tipo === 'games-up:novidade') atualizarSozinho(); });
+window.addEventListener('gamesup:camadafechada', () => {
+  if (telaPendente && !temCamadaAberta() && !temEdicao()) {
+    telaPendente = false; document.getElementById('dados-novos')?.remove(); render();
+  }
+});
 
 function telaLogin(msg) {
   const campo = h('input', { type: 'password', id: 'token', autocomplete: 'off', spellcheck: 'false', placeholder: 'github_pat_…', 'aria-label': 'Token do GitHub' });
@@ -298,7 +334,7 @@ function render() {
     conteudo = h('div', { class: 'card erro-tela' }, icone('alerta', { tamanho: 28 }), h('p', {}, 'Esta tela não abriu. Toque em outra aba e volte.'), h('p', { class: 'sinc' }, e.message));
   }
   // Início e subpáginas desenham o próprio topo; as demais ganham um título grande com ícone.
-  const temTopoProprio = pagina.id === 'inicio';
+  const temTopoProprio = ['inicio', 'avisos'].includes(pagina.id);
   const topo = temTopoProprio ? null : pagina.pai
     ? h('div', { class: 'topo-sub' },
       h('button', { class: 'voltar', type: 'button', 'aria-label': 'Voltar', onclick: () => irPara(pagina.pai) }, icone('esquerda', { tamanho: 22 })),
@@ -319,13 +355,24 @@ function render() {
         h('div', { class: 'lateral-rodape' },
           h('img', { class: 'lateral-jogo', src: 'marca/jogo.png', alt: '', width: 36, height: 36, onerror: e => e.target.remove() }),
           h('div', {}, h('strong', {}, 'Escola Brasileira'), h('small', {}, estado.usuario?.nome || '')))),
-      h('main', { class: 'principal', id: 'conteudo' }, topo, conteudo),
+      h('main', { class: 'principal', id: 'conteudo' },
+        h('div', { class: 'barra-acompanhamento' },
+          h('span', { id: 'estado-sincronizacao', role: 'status' }, 'Conferindo dados…'),
+          h('button', { type: 'button', class: 'btn', onclick: async e => {
+            e.currentTarget.disabled = true;
+            try { await carregar(); avisar('Dados atualizados.'); } catch (err) { avisar(err.message, true); e.currentTarget.disabled = false; }
+          } }, icone('atualizar', { tamanho: 18 }), 'Atualizar agora'),
+          h('button', { type: 'button', class: 'btn', onclick: () => irPara('avisos') }, icone('sino', { tamanho: 18 }),
+            `Avisos (${novosAvisos(listarAvisos(estado.dados), lerAvisosLidos(estado.usuario)).length})`)),
+        topo, conteudo),
       h('nav', { class: 'barra-abas', 'aria-label': 'Menu principal' }, ABAS.filter(a => PRINCIPAIS_CELULAR.includes(a.id)).map(botaoAba), menuMais)));
   if (render.mesmaTela) window.scrollTo(0, rolagem);
   render.mesmaTela = true;
+  atualizarIndicador();
 }
 
 function irPara(aba, sub) {
+  telaPendente = false; document.getElementById('dados-novos')?.remove();
   estado.aba = TODAS.some(a => a.id === aba) ? aba : 'inicio';
   if (sub !== undefined) estado.sub[estado.aba] = sub;
   try { sessionStorage.setItem('eb-aba', estado.aba); } catch {}
@@ -351,14 +398,16 @@ async function inscricaoAtual() {
 
 async function conferirNotificacoes() {
   estado.pushAtivo = false;
-  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
   try {
-    const publica = await chavePublicaVapid();
-    estado.pushAtivo = await notificacoesAtivas({
-      registration: navigator.serviceWorker.getRegistration(), permission: Notification.permission,
-      publicKey: publica, inscricoes: estado.dados?.push_inscricoes, usuarioId: estado.usuario?.id,
+    const suportado = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+    const publica = suportado && Notification.permission === 'granted' ? await chavePublicaVapid() : null;
+    estado.pushDiagnostico = await diagnosticarNotificacoes({
+      registration: suportado ? navigator.serviceWorker.getRegistration() : null, permission: suportado ? Notification.permission : null,
+      publicKey: publica, inscricoes: estado.dados?.push_inscricoes, confirmacoes: estado.dados?.push_confirmacoes, usuarioId: estado.usuario?.id,
+      suportado, ios: ehIOS(), instalado: instalado(),
     });
-  } catch { estado.pushAtivo = false; }
+    estado.pushAtivo = estado.pushDiagnostico.ativo;
+  } catch { estado.pushDiagnostico = { estado: 'falha', titulo: 'Não foi possível conferir os avisos', texto: 'A conexão ou a configuração do push não respondeu. Isso não significa que você desativou as notificações. Tente verificar novamente.', ativo: false }; }
 }
 
 async function ativarNotificacoes(btn) {
@@ -414,6 +463,7 @@ Object.assign(ctx, {
   celular: {
     instalado, ehIOS, podeInstalar: () => !!pedidoInstalacao, instalar: instalarAtalho,
     ativar: ativarNotificacoes, desativar: desativarNotificacoes, exemplo: exemploNotificacao,
+    conferir: async () => { await carregar(); },
   },
 });
 

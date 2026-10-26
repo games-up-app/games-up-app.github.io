@@ -4,8 +4,10 @@
 //   2) Publicações para autorizar (lançamentos) -> card "Sua autorização" com a imagem EXATA do pacote
 //      e o código do pacote (8 primeiros caracteres do SHA-256), que precisa ser confirmado.
 // Nada expande para baixo: detalhes abrem em folha (de baixo para cima) ou modal (fundo escuro).
-import { h, icone, iconeDoTipo, abrirFolha, abrirModal, botaoCopiar, chip, vazio } from '../ui/componentes.js?v=20261025-etapas2';
-import { ctx } from '../ui/contexto.js?v=20261025-etapas2';
+import { h, icone, iconeDoTipo, abrirFolha, abrirModal, botaoCopiar, chip, vazio } from '../ui/componentes.js?v=20261025-comunicacao3';
+import { ctx } from '../ui/contexto.js?v=20261025-comunicacao3';
+import { estadoPublicacao, estadoPropostaPublicacao, horarioBrasilia } from '../nucleo/estado-publicacao.js?v=20261025-fluxo1';
+import { semanaDe } from '../nucleo/andamento.js?v=20261025-comunicacao3';
 
 // ------------------------------------------------------------------ status e grupos
 const ST = {
@@ -26,7 +28,7 @@ const ROTULOS = {
   [ST.EM_TESTES]: ['Em testes', 'relevante', 'qualidade'],
   [ST.AGUARDANDO_FINAL]: ['Falta sua autorização', 'warn', 'assinatura'],
   [ST.APROVADA_PUB]: ['Autorizada', 'ok', 'escudo'],
-  [ST.PUBLICADA]: ['Já está no jogo', 'ok', 'foguete'],
+  [ST.PUBLICADA]: ['Publicado confirmado', 'ok', 'foguete'],
   [ST.REJEITADA]: ['Rejeitada', 'bad', 'fechar'],
   [ST.BLOQUEADA]: ['Bloqueada', 'bad', 'cadeado'],
   [ST.DEVOLVIDA]: ['Voltou para ajustes', 'warn', 'editar'],
@@ -40,8 +42,9 @@ function seloStatus(st) {
 
 const SUBABAS = [
   ['aberto', 'Em aberto', 'Esperando a decisão do dono.'],
-  ['autorizadas', 'Autorizadas', 'Você já autorizou; vão para o jogo na data marcada.'],
+  ['autorizadas', 'Autorizadas', 'Sua autorização foi registrada. Ainda falta confirmar a publicação.'],
   ['concluidas', 'Concluídas', 'Já foram para o jogo ou foram recusadas.'],
+  ['pendencias', 'Pendências', 'Bloqueadas ou devolvidas: precisam de ação antes de continuar.'],
   ['agendadas', 'Agendadas', 'Aprovadas e em preparo, com data prevista para ir ao jogo.'],
   ['todas', 'Todas', 'Tudo, do mais novo para o mais antigo.'],
 ];
@@ -51,16 +54,18 @@ const futura = d => !!d && String(d).slice(0, 10) >= hoje();
 
 const GRUPOS_PROPOSTA = {
   aberto: p => DECIDIVEIS.includes(p.status),
-  autorizadas: p => p.status === ST.APROVADA_PUB,
-  concluidas: p => [ST.PUBLICADA, ST.REJEITADA, ST.BLOQUEADA].includes(p.status),
-  agendadas: p => [ST.APROVADA_DEV, ST.EM_DEV, ST.EM_TESTES, ST.AGUARDANDO_FINAL, ST.DEVOLVIDA].includes(p.status),
+  autorizadas: p => estadoDaProposta(p).status === ST.APROVADA_PUB,
+  concluidas: p => [ST.PUBLICADA, ST.REJEITADA].includes(estadoDaProposta(p).status),
+  pendencias: p => [ST.BLOQUEADA, ST.DEVOLVIDA].includes(estadoDaProposta(p).status),
+  agendadas: p => [ST.APROVADA_DEV, ST.EM_DEV, ST.EM_TESTES, ST.AGUARDANDO_FINAL].includes(estadoDaProposta(p).status),
   todas: () => true,
 };
 const GRUPOS_LANCAMENTO = {
   aberto: l => l.status === ST.AGUARDANDO_FINAL,
   autorizadas: l => l.status === ST.APROVADA_PUB,
-  concluidas: l => [ST.PUBLICADA, ST.BLOQUEADA].includes(l.status),
-  agendadas: l => ![ST.PUBLICADA, ST.BLOQUEADA, ST.AGUARDANDO_FINAL].includes(l.status) && futura(l.dataAlvo),
+  concluidas: l => l.status === ST.PUBLICADA,
+  pendencias: l => [ST.BLOQUEADA, ST.DEVOLVIDA].includes(l.status),
+  agendadas: l => ![ST.PUBLICADA, ST.BLOQUEADA, ST.DEVOLVIDA, ST.AGUARDANDO_FINAL, ST.APROVADA_PUB].includes(l.status) && futura(l.dataAlvo),
   todas: () => true,
 };
 
@@ -88,6 +93,7 @@ const ehDono = () => ctx.estado?.usuario?.papel === 'proprietario';
 const dados = () => ctx.estado?.dados || {};
 const propostas = () => dados().propostas?.propostas || [];
 const lancamentos = () => dados().lancamentos?.lancamentos || [];
+const estadoDaProposta = p => estadoPropostaPublicacao(p, lancamentos(), dados().config || {});
 const ehImagem = c => /\.(png|jpe?g|webp)$/i.test(String(c || ''));
 const linkSeguro = (url, texto) => (/^https:\/\//.test(url || '') ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, texto, icone('externo', { tamanho: 14 })) : h('span', {}, texto));
 
@@ -141,7 +147,7 @@ function chipTipoLanc(l) {
 /** Evento: mostra como ele aparece na página do jogo no Roblox (capa, título, subtítulo, datas, descrição). */
 function previaEvento(l, grande = true) {
   const ev = l.evento || {};
-  const data = iso => (iso ? `${diaSemana(iso.slice(0, 10)).slice(0, 3).toLowerCase()}, ${dataCurta(iso.slice(0, 10))}, ${iso.slice(11, 16)}` : '—');
+  const data = iso => horarioBrasilia(iso) || 'Horário não informado';
   const desc = String(ev.descricao || '');
   return h('div', { class: 'dc-heroi-bloco' },
     h('div', { class: 'dc-evento' },
@@ -239,33 +245,42 @@ function blocoComentarios(alvoTipo, alvoId) {
 // ------------------------------------------------------------------ propostas
 function cardProposta(p) {
   const decidivel = DECIDIVEIS.includes(p.status) && !p.bloqueio;
-  return h('button', { type: 'button', class: `dc-card-proposta${decidivel ? ' pede-voce' : ''}`, onclick: () => abrirProposta(p.id), 'aria-label': `Abrir proposta ${p.id}: ${p.titulo}` },
+  const f = estadoDaProposta(p);
+  return h('article', { class: `dc-card-proposta dc-card-lancamento${decidivel ? ' pede-voce' : ''}` },
+    h('button', { type: 'button', class: 'dc-abrir-lancamento', onclick: () => abrirProposta(p.id), 'aria-label': `Abrir proposta ${p.id}: ${p.titulo}. ${f.titulo}` },
     miniaturaProposta(p),
     h('div', { class: 'dc-card-corpo' },
-      h('div', { class: 'dc-card-chips' }, seloStatus(p.status), chip(p.id, { iconeNome: iconeDoTipo(p.tipo) }), p.ideiaId ? chip('Sua ideia', { tom: 'relevante', iconeNome: 'lampada' }) : null, ehHoje(p) ? chip(`Hoje ${p.fazerHoje.horario}`, { tom: 'quente', iconeNome: 'raio' }) : null, chipCategoria(p), p.mudaDesign ? chip('Muda o visual', { tom: 'quente', iconeNome: 'pincel' }) : null),
+      h('div', { class: 'dc-card-chips' }, chip(p.id, { iconeNome: iconeDoTipo(p.tipo) }), p.ideiaId ? chip('Sua ideia', { tom: 'relevante', iconeNome: 'lampada' }) : null, chipCategoria(p), p.mudaDesign ? chip('Muda o visual', { tom: 'quente', iconeNome: 'pincel' }) : null),
       h('h3', { class: 'dc-card-titulo' }, p.titulo),
       h('p', { class: 'dc-card-resumo' }, curto(p.resumo || p.descricao, 110)),
       h('div', { class: 'dc-card-pe' },
-        p.semanaAlvo ? h('span', { class: 'dc-pe-data' }, icone('calendario', { tamanho: 16 }), `Previsto ${dataCurta(p.semanaAlvo)}`) : h('span'),
-        h('span', { class: 'dc-pe-abrir' }, decidivel && ehDono() ? 'Decidir' : 'Ver', icone('direita', { tamanho: 18 })))));
+        h('span', { class: 'dc-pe-abrir' }, decidivel && ehDono() ? 'Decidir' : 'Ver situação', icone('direita', { tamanho: 18 }))))),
+    blocoEstadoProposta(p, { compacto: true }));
 }
 
-/** Resumo roxo da proposta: se for longo, um toque mostra o texto inteiro (e outro volta). */
+function blocoEstadoProposta(p, { compacto = false, fechar } = {}) {
+  const f = estadoDaProposta(p);
+  const relacionado = f.lancamento || { propostaIds: [p.id] };
+  return h('section', { class: 'dc-fluxo', 'aria-label': `Situação da proposta ${p.id}` },
+    chip(f.titulo, { tom: f.tom, iconeNome: f.icone }),
+    trilhaEstado(f),
+    h('p', {}, h('strong', {}, 'Quem age agora: '), f.quemAge),
+    h('p', { class: 'dc-proxima' }, h('strong', {}, 'Próxima ação: '), f.proximaAcao),
+    f.aviso ? h('p', { class: 'dc-reentrega' }, f.aviso) : null,
+    h('p', { class: 'dc-fluxo-horario' }, f.horario),
+    !compacto ? blocoEvidencias(relacionado, fechar) : botaoAndamento(relacionado, fechar, 'Ver imagens e vídeos'),
+    f.podeAutorizar && ehDono() ? botaoDc('Dar autorização final', { classe: 'dc-btn-amarelo dc-largo', iconeNome: 'assinatura', onclick: () => {
+      fechar?.(); ctx.irPara?.('decisoes', { tipo: 'lancamento', id: f.lancamento.id });
+    } }) : !compacto && f.lancamento ? botaoDc('Ver situação do pacote', { classe: 'dc-btn-claro dc-largo', iconeNome: 'foguete', onclick: () => { fechar?.(); abrirLancamento(f.lancamento.id); } }) : null);
+}
+
+/** Resumo roxo da proposta: textos longos abrem em folha, sem expandir o card. */
 function resumoDestaque(texto) {
   const t = String(texto || '').trim();
   const LIMITE = 260;
   if (t.length <= LIMITE) return h('div', { class: 'dc-resumo-destaque' }, icone('lampada', { tamanho: 22 }), h('p', {}, t));
-  const par = h('p', {}, curto(t, LIMITE));
-  const mais = h('span', { class: 'dc-info-mais' }, 'Ler tudo', icone('direita', { tamanho: 14 }));
-  const caixa = h('button', { type: 'button', class: 'dc-resumo-destaque dc-resumo-botao', 'aria-expanded': 'false' },
-    icone('lampada', { tamanho: 22 }), h('div', {}, par, mais));
-  caixa.addEventListener('click', () => {
-    const aberto = caixa.getAttribute('aria-expanded') === 'true';
-    par.textContent = aberto ? curto(t, LIMITE) : t;
-    mais.replaceChildren(aberto ? 'Ler tudo' : 'Mostrar menos', icone('direita', { tamanho: 14 }));
-    caixa.setAttribute('aria-expanded', String(!aberto));
-  });
-  return caixa;
+  return h('button', { type: 'button', class: 'dc-resumo-destaque dc-resumo-botao', onclick: () => abrirFolha({ titulo: 'Resumo da proposta', conteudo: h('p', { class: 'dc-texto-folha' }, t) }) },
+    icone('lampada', { tamanho: 22 }), h('div', {}, h('p', {}, curto(t, LIMITE)), h('span', { class: 'dc-info-mais' }, 'Ler tudo', icone('direita', { tamanho: 14 }))));
 }
 
 /** Ideia que o dono mandou pelo celular e a equipe ainda está transformando em proposta. */
@@ -320,8 +335,9 @@ function abrirProposta(id) {
       }
       const plano = p.hipotese ? `${p.hipotese.metrica}: ${p.hipotese.esperado}` : null;
       return h('div', { class: 'dc-detalhe' },
+        blocoEstadoProposta(p, { fechar }),
         heroi,
-        h('div', { class: 'dc-card-chips' }, seloStatus(p.status), chipCategoria(p) || chip(p.tipo || 'ideia', { iconeNome: iconeDoTipo(p.tipo) }), p.mudaDesign ? chip('Muda o visual do jogo', { tom: 'quente', iconeNome: 'pincel' }) : null,
+        h('div', { class: 'dc-card-chips' }, chipCategoria(p) || chip(p.tipo || 'ideia', { iconeNome: iconeDoTipo(p.tipo) }), p.mudaDesign ? chip('Muda o visual do jogo', { tom: 'quente', iconeNome: 'pincel' }) : null,
           p.semanaAlvo ? chip(`Previsto ${dataCurta(p.semanaAlvo)}`, { iconeNome: 'calendario' }) : null),
         h('h2', { class: 'dc-detalhe-titulo' }, p.titulo),
         p.bloqueio ? h('div', { class: 'dc-alerta warn' }, icone('alerta', { tamanho: 20 }), h('div', {}, h('strong', {}, 'Ainda não dá para decidir. '), p.bloqueio)) : null,
@@ -333,7 +349,7 @@ function abrirProposta(id) {
           cardInfo('alerta', 'Risco', p.risco, 'cuidado')),
         plano ? h('div', { class: 'dc-medida' }, icone('grafico', { tamanho: 18 }), h('div', {}, h('strong', {}, 'Como vamos medir: '), plano)) : null,
         botaoDc('Mais detalhes', { classe: 'dc-btn-claro dc-largo', iconeNome: 'noticia', onclick: () => folhaDetalhesProposta(p) }),
-        podeDecidir ? null : h('p', { class: 'dc-fraco dc-centro' }, ehDono() ? 'Esta proposta já foi decidida.' : 'Só o proprietário decide propostas.'),
+        ehDono() ? null : h('p', { class: 'dc-fraco dc-centro' }, 'Só o proprietário aprova ideias e autoriza publicações. A equipe acompanha e prepara a entrega.'),
         blocoComentarios('proposta', p.id, comentarios));
     },
     rodape: podeDecidir ? fechar => {
@@ -347,7 +363,7 @@ function abrirProposta(id) {
     } : podeAdiantar(p) ? fechar => {
       if (ehHoje(p)) {
         return h('div', { class: 'dc-rodape-decisao' },
-          h('div', { class: 'dc-alerta' }, icone('raio', { tamanho: 20 }), h('div', {}, h('strong', {}, `Marcada para hoje às ${p.fazerHoje.horario}. `), 'A equipe faz esta primeiro; você autoriza o pacote e ele vai para o jogo sozinho nesse horário.')),
+          h('div', { class: 'dc-alerta' }, icone('raio', { tamanho: 20 }), h('div', {}, h('strong', {}, `Meta de hoje: ${p.fazerHoje.horario} (Brasília). `), 'A equipe prepara e testa. Depois você revisa as evidências e autoriza o pacote; o envio ainda depende das verificações e da confirmação.')),
           botaoDc('Voltar para a data normal', { classe: 'dc-btn-claro', iconeNome: 'calendario', onclick: () => desfazerHoje(p, fechar) }));
       }
       return h('div', { class: 'dc-rodape-decisao' }, botaoDc('Fazer hoje', { classe: 'dc-btn-amarelo dc-btn-grande', iconeNome: 'raio', onclick: () => folhaFazerHoje(p, { fecharModal: fechar }) }));
@@ -383,10 +399,10 @@ function folhaFazerHoje(p, { aprovarAntes = false, fecharModal } = {}) {
       });
       return h('div', { class: 'dc-confirma' },
         h('div', { class: 'dc-confirma-icone amarelo' }, icone('raio', { tamanho: 30 })),
-        h('p', { class: 'dc-confirma-texto' }, 'A equipe passa esta na frente de tudo e entrega um pacote só dela. Quando ficar pronto, você recebe o aviso e autoriza com o código; ela vai para o jogo sozinha no horário escolhido (se autorizar depois, sai na hora) — sem esperar o dia normal de publicação.'),
+        h('p', { class: 'dc-confirma-texto' }, 'A equipe prioriza esta ideia e entrega um pacote só dela. Quando estiver pronto, revise as imagens e os vídeos no Andamento. Depois confira o código, toque em Autorizar publicação e confirme no seu aparelho.'),
         h('div', { class: 'dc-confirma-alvo' }, miniaturaProposta(p, 'dc-midia-mini'), h('div', {}, h('strong', {}, p.titulo), h('div', { class: 'dc-fraco' }, `${p.id} · versão ${p.versao}`))),
         h('label', { class: 'dc-rotulo', for: `dc-hoje-${p.id}` }, 'Horário de publicação (Brasília)'), hora, erro,
-        h('p', { class: 'dc-fraco' }, 'Depois da sua autorização, o jogo atualiza sozinho neste horário. Se não der tempo com qualidade, a equipe avisa no app em vez de entregar com pressa.'),
+        h('p', { class: 'dc-fraco' }, 'Esse horário é uma meta. A autorização permite iniciar o envio, que depende das verificações. Se o horário passar, acompanhe o estado real no Andamento; a publicação só está concluída após a confirmação.'),
         h('div', { class: 'dc-confirma-botoes' }, ok, voltar));
     },
   });
@@ -452,18 +468,53 @@ function confirmarDecisao(p, acao, fecharModal) {
 }
 
 // ------------------------------------------------------------------ lançamentos (autorização final)
-function quandoPublica(l) {
-  const cfg = dados().config || {};
-  // "Fazer hoje": vai para o jogo sozinho no horário escolhido (se autorizar depois, sai na hora).
-  if (l.urgente) return { dia: 'Hoje', hora: l.horario || null, texto: l.horario ? `Hoje às ${l.horario}` : 'Hoje, ao autorizar' };
-  if (ehEvento(l) && l.evento?.inicio) {
-    const i = l.evento.inicio;
-    const dia = `${diaSemana(i.slice(0, 10))}, ${dataCurta(i.slice(0, 10))}`;
-    return { dia, hora: i.slice(11, 16), texto: `Começa ${dia} às ${i.slice(11, 16)}` };
-  }
-  const hora = cfg.horarioPublicacao || null;
-  const dia = l.dataAlvo ? `${diaSemana(l.dataAlvo)}, ${dataCurta(l.dataAlvo)}` : (cfg.diaPublicacao === 'domingo' ? 'Próximo domingo' : 'Próximo sábado');
-  return { dia, hora, texto: `${dia}${hora ? ` às ${hora}` : ''}` };
+const fluxo = l => estadoPublicacao(l, dados().config || {});
+
+// Usa o filtro de proposta/semana já oferecido pelo Andamento, inclusive no celular.
+function registroEvidencia(l) {
+  const registros = (dados().andamento?.registros || []).filter(r => (l.propostaIds || []).includes(r.propostaId));
+  const ordenados = [...registros].sort((a, b) => String(b.em).localeCompare(String(a.em)));
+  return ordenados.find(r => r.midias?.length) || ordenados[0];
+}
+function verAndamento(l, fechar) {
+  const r = registroEvidencia(l);
+  fechar?.();
+  ctx.irPara?.('andamento', { proposta: r?.propostaId || l.propostaIds?.[0] || '', ...(r ? { semana: r.semana || semanaDe(r.em) } : {}) });
+}
+function botaoAndamento(l, fechar, texto = 'Ver Andamento') {
+  return botaoDc(texto, { classe: 'dc-btn-claro dc-largo', iconeNome: 'imagem', onclick: () => verAndamento(l, fechar) });
+}
+function blocoEvidencias(l, fechar) {
+  const r = registroEvidencia(l);
+  const midias = r?.midias || [];
+  const videos = midias.filter(m => m.tipo === 'video').length;
+  const imagens = midias.filter(m => m.tipo === 'imagem').length;
+  return h('section', { class: 'dc-evidencias', 'aria-label': 'Revisar evidências antes de autorizar' },
+    h('strong', {}, icone('olho', { tamanho: 20 }), 'Primeiro, veja como ficou'),
+    h('p', {}, midias.length ? `${imagens} imagem(ns) e ${videos} vídeo(s) no registro “${r.titulo}” da proposta.` : 'Ainda não há imagens ou vídeos das propostas deste pacote no Andamento. Confira os registros ou peça à equipe para anexar as evidências.'),
+    botaoAndamento(l, fechar, 'Ver imagens e vídeos'),
+    h('p', { class: 'dc-fraco' }, 'Você pode revisar as evidências sem devolver o pacote. Use Devolver para ajustes quando quiser pedir uma mudança.'));
+}
+function trilhaPublicacao(l) {
+  return trilhaEstado(fluxo(l));
+}
+function trilhaEstado(f) {
+  const rotulos = { concluida: 'concluída', atual: 'etapa atual', pendente: 'pendente', impedida: 'precisa de ação' };
+  return h('ol', { class: 'dc-trilha', 'aria-label': 'Etapas da publicação' }, f.passos.map((p, i) =>
+    h('li', { class: `dc-trilha-passo ${p.estado}`, 'aria-current': i === f.etapa ? 'step' : null },
+      icone(p.estado === 'concluida' ? 'ok' : p.estado === 'impedida' ? 'alerta' : ['qualidade', 'assinatura', 'relogio', 'foguete'][i], { tamanho: 18 }),
+      h('span', {}, p.nome, h('small', {}, rotulos[p.estado])))));
+}
+function blocoFluxo(l, { compacto = false, fechar, atalho = true, marcos = true } = {}) {
+  const f = fluxo(l);
+  return h('section', { class: 'dc-fluxo', 'aria-label': 'Situação e próxima ação' },
+    chip(f.titulo, { tom: f.tom, iconeNome: f.icone }), trilhaPublicacao(l),
+    h('p', { class: 'dc-proxima' }, h('strong', {}, 'Próxima ação: '), f.proximaAcao),
+    h('p', { class: 'dc-fluxo-horario' }, icone('calendario', { tamanho: 18 }), f.horario),
+    !compacto ? [h('p', {}, f.modo), f.revisao ? h('p', { class: 'dc-reentrega' }, f.revisao) : null,
+      marcos && f.marcos.length ? h('ul', { class: 'dc-marcos' }, f.marcos.map(m => h('li', {}, h('strong', {}, `${m.nome}: `), m.em))) : null,
+      h('p', { class: 'dc-fraco' }, f.codigo)] : null,
+    atalho ? botaoAndamento(l, fechar) : null);
 }
 const codigoPacote = l => (l.artefato?.sha256 || '').slice(0, 8);
 const nomeArquivo = l => (l.artefato?.caminho || '').split('/').pop() || '—';
@@ -490,19 +541,21 @@ function blocoCodigo(l) {
   return h('div', { class: 'dc-codigo' },
     h('div', { class: 'dc-codigo-topo' }, icone('assinatura', { tamanho: 18 }), 'Código do pacote'),
     h('div', { class: 'dc-codigo-linha' }, h('span', { class: 'dc-codigo-valor', 'aria-label': `Código ${cod.split('').join(' ')}` }, cod || '—'), cod ? botaoCopiar(cod, 'Copiar') : null),
-    h('p', { class: 'dc-codigo-explica' }, 'É a “impressão digital” desta versão. Se o arquivo mudar, o código muda e você autoriza de novo.'));
+    h('p', { class: 'dc-codigo-explica' }, l.status === ST.AGUARDANDO_FINAL
+      ? 'Identifica esta versão. Copiar ou digitar o código não autoriza. Toque em Autorizar publicação e confirme em Sim, autorizar. Se o arquivo mudar, é preciso autorizar a nova versão.'
+      : l.status === ST.PUBLICADA ? 'Identificação do pacote já publicado. Nenhuma nova autorização é necessária para esta publicação.'
+        : 'Copiar ou digitar o código não autoriza. A situação e o próximo passo estão no topo; este código apenas identifica a versão do pacote.'));
 }
 
 function cardAutorizacao(l) {
-  const q = quandoPublica(l);
   const testesOk = l.testes?.resultado === 'aprovado';
   const semChave = ctx.estado?.chave?.estado !== 'registrada';
   const cod = codigoPacote(l);
-  const card = h('article', { class: 'dc-autorizacao', id: `lanc-${l.id}` });
+  const card = h('article', { class: 'dc-autorizacao', id: `lanc-${l.id}`, tabindex: '-1' });
 
   const conf = h('input', { class: 'dc-campo dc-campo-codigo', type: 'text', id: `dc-conf-${l.id}`, maxlength: 8, autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false', inputmode: 'text', placeholder: '8 caracteres', 'aria-describedby': `dc-conf-dica-${l.id}` });
   const marca = h('span', { class: 'dc-conf-marca', 'aria-live': 'polite' });
-  const coment = h('textarea', { class: 'dc-campo', rows: 2, maxlength: 2000, placeholder: 'Opcional. Obrigatório se for devolver.', 'aria-label': 'Comentário' });
+  const coment = h('textarea', { class: 'dc-campo', id: `dc-coment-${l.id}`, rows: 2, maxlength: 2000, placeholder: 'Opcional. Obrigatório se for devolver.', 'aria-label': 'Comentário' });
   const autorizar = botaoDc('Autorizar publicação', { classe: 'dc-btn-amarelo dc-btn-grande', iconeNome: 'foguete', desativado: true });
   const confere = () => conf.value.trim().toLowerCase() === cod && !!cod;
   conf.addEventListener('input', () => {
@@ -510,6 +563,7 @@ function cardAutorizacao(l) {
     autorizar.disabled = !ok || semChave || !testesOk;
     conf.classList.toggle('confere', ok);
     conf.classList.toggle('errado', conf.value.trim().length >= 8 && !ok);
+    conf.setAttribute('aria-invalid', String(conf.value.trim().length >= 8 && !ok));
     marca.replaceChildren(...(ok ? [icone('ok', { tamanho: 16 }), 'Código confere'] : conf.value.trim().length >= 8 ? [icone('alerta', { tamanho: 16 }), 'Não confere'] : []));
     marca.className = `dc-conf-marca ${ok ? 'ok' : 'bad'}`;
   });
@@ -526,9 +580,10 @@ function cardAutorizacao(l) {
       h('div', { class: 'dc-aut-selo' }, icone('assinatura', { tamanho: 22 })),
       h('div', {}, h('div', { class: 'dc-aut-sobre' }, 'Sua autorização'), h('h3', {}, tituloLanc(l, true))),
       seloStatus(l.status)),
+    blocoEvidencias(l),
+    blocoFluxo(l, { atalho: false, marcos: false }),
     midiaDoLancamento(l),
     h('div', { class: 'dc-aut-fatos' },
-      h('div', { class: 'dc-fato' }, icone('calendario', { tamanho: 22 }), h('div', {}, h('div', { class: 'dc-fato-rot' }, ehEvento(l) ? 'Começa' : 'Vai para o jogo'), h('strong', {}, q.dia), q.hora ? h('div', { class: 'dc-fato-sub' }, `às ${q.hora} (Brasília)${ehEvento(l) ? ' · fica 7 dias' : ''}`) : null)),
       h('div', { class: `dc-fato ${testesOk ? 'ok' : 'bad'}` }, icone(testesOk ? 'qualidade' : 'alerta', { tamanho: 22 }), h('div', {}, h('div', { class: 'dc-fato-rot' }, 'Testes'), h('strong', {}, testesOk ? 'Aprovados' : 'Não aprovados'),
         l.testes?.detalhes ? h('button', { type: 'button', class: 'dc-link', onclick: () => abrirFolha({ titulo: 'Testes feitos', conteudo: h('p', { class: 'dc-texto-folha' }, l.testes.detalhes) }) }, 'Ver testes') : null))),
     h('section', { class: 'dc-muda' }, h('h4', { class: 'dc-sub' }, icone('raio', { tamanho: 18 }), 'O que vai mudar'),
@@ -539,8 +594,8 @@ function cardAutorizacao(l) {
     semChave || !ehDono() ? null : h('div', { class: 'dc-aut-passos' },
       h('label', { class: 'dc-rotulo', for: `dc-conf-${l.id}` }, h('span', { class: 'dc-num' }, '1'), 'Digite ou cole o código do pacote'),
       h('div', { class: 'dc-conf-linha' }, conf, colar),
-      h('div', { class: 'dc-conf-dica', id: `dc-conf-dica-${l.id}` }, marca, h('span', { class: 'dc-fraco' }, 'Isto confirma que você conferiu esta versão.')),
-      h('label', { class: 'dc-rotulo' }, h('span', { class: 'dc-num' }, '2'), 'Comentário (opcional)'), coment,
+      h('div', { class: 'dc-conf-dica', id: `dc-conf-dica-${l.id}` }, marca, h('span', { class: 'dc-fraco' }, 'O código só libera o botão. A autorização exige tocar no botão e confirmar.')),
+      h('label', { class: 'dc-rotulo', for: `dc-coment-${l.id}` }, h('span', { class: 'dc-num' }, '2'), 'Comentário (opcional)'), coment,
       h('div', { class: 'dc-rotulo' }, h('span', { class: 'dc-num' }, '3'), 'Autorize'),
       autorizar,
       h('div', { class: 'dc-rodape-linha' }, devolver, bloquear)),
@@ -549,7 +604,6 @@ function cardAutorizacao(l) {
 }
 
 function confirmarAutorizacao(l, coment) {
-  const q = quandoPublica(l);
   abrirFolha({
     titulo: 'Autorizar a publicação?',
     conteudo: fechar => {
@@ -559,11 +613,18 @@ function confirmarAutorizacao(l, coment) {
         const antes = l.status;
         await ctx.gravar('/api/lancamentos/decisao', { lancamentoId: l.id, acao: 'autorizar', artefatoSha256: l.artefato?.sha256, comentario: coment.value }, [ok, voltar], 'Autorização gravada e assinada por este aparelho.');
         const agora = lancamentos().find(x => x.id === l.id);
-        if (agora && agora.status !== antes) fechar();
+        if (agora && agora.status !== antes && [ST.APROVADA_PUB, ST.PUBLICADA].includes(agora.status)) {
+          fechar();
+          abrirFolha({ titulo: 'Autorização registrada', conteudo: fecharSucesso => h('div', { class: 'dc-confirma' },
+            h('p', { class: 'dc-confirma-texto', role: 'status' }, 'Sua autorização foi gravada. Acompanhe a próxima etapa no Andamento.'),
+            blocoFluxo(agora, { fechar: fecharSucesso })) });
+        }
       });
       return h('div', { class: 'dc-confirma' },
         h('div', { class: 'dc-confirma-icone amarelo' }, icone('foguete', { tamanho: 30 })),
-        h('p', { class: 'dc-confirma-texto' }, ehEvento(l) ? `O evento é criado na página do jogo logo depois desta autorização e começa ${q.dia.toLowerCase()}${q.hora ? ` às ${q.hora}` : ''}.` : `Esta versão vai para o jogo ${q.dia.toLowerCase()}${q.hora ? ` às ${q.hora}` : ''}, sozinha.${l.urgente && q.hora ? ' Se você autorizar depois desse horário, ela sai na hora.' : ''}`),
+        h('p', { class: 'dc-confirma-texto' }, 'Você autoriza esta versão. Depois ainda é preciso enviar e confirmar a publicação.'),
+        h('p', {}, fluxo(l).modo), h('p', {}, fluxo(l).horario),
+        botaoAndamento(l, fechar, 'Ver imagens e vídeos antes de autorizar'),
         h('div', { class: 'dc-confirma-codigo' }, 'Vale só para o código ', h('strong', {}, codigoPacote(l)), '. Se o arquivo mudar, esta autorização deixa de valer sozinha.'),
         h('div', { class: 'dc-confirma-botoes' }, ok, voltar));
     },
@@ -588,7 +649,8 @@ function confirmarLancamento(l, acao, comentOrigem) {
       });
       return h('div', { class: 'dc-confirma' },
         h('div', { class: `dc-confirma-icone ${ehDevolver ? 'amarelo' : 'vermelho'}` }, icone(ehDevolver ? 'editar' : 'cadeado', { tamanho: 30 })),
-        h('p', { class: 'dc-confirma-texto' }, ehDevolver ? 'A equipe ajusta e prepara um pacote novo. Você autoriza de novo depois.' : 'Nada é publicado. A equipe precisa de uma nova decisão sua para continuar.'),
+        h('p', { class: 'dc-confirma-texto' }, ehDevolver ? 'Devolver pede uma mudança no pacote. A equipe precisa ajustar, testar e reentregar como pronto; o botão Autorizar só volta depois. Você autoriza novamente.' : 'Nada é publicado. A equipe precisa de uma nova decisão sua para continuar.'),
+        ehDevolver ? [h('p', {}, 'Se você só quer ver como ficou, pode abrir as imagens e os vídeos sem devolver.'), botaoAndamento(l, fechar, 'Ver imagens e vídeos sem devolver')] : null,
         h('label', { class: 'dc-rotulo' }, ehDevolver ? 'O que ajustar (obrigatório)' : 'Motivo (opcional)'), campo, erro,
         h('div', { class: 'dc-confirma-botoes' }, ok, voltar));
     },
@@ -600,45 +662,54 @@ function folhaLancamento(l) {
   const a = l.autorizacao?.dados;
   abrirFolha({
     titulo: `Detalhes de ${l.id}`,
-    conteudo: h('div', { class: 'dc-folha-det' },
+    conteudo: fechar => h('div', { class: 'dc-folha-det' },
+      blocoEvidencias(l, fechar), blocoFluxo(l, { fechar, atalho: false }),
       linha('raio', 'O que muda', (l.changelog || []).length ? h('ul', { class: 'dc-ul' }, l.changelog.map(c => h('li', {}, c))) : null),
       linha('qualidade', 'Testes', l.testes ? `${l.testes.resultado === 'aprovado' ? 'Aprovados' : 'Não aprovados'}${l.testes.detalhes ? ` — ${l.testes.detalhes}` : ''}` : null),
       linha('alerta', 'O que pode dar errado', l.riscos),
       linha('esquerda', 'Como desfazer', l.planoReversao),
       linha('decisoes', 'Propostas incluídas', (l.propostaIds || []).join(', ')),
-      linha('assinatura', 'Sua autorização', a ? `Assinada por ${a.por} em ${dataHora(a.em)}; vale até ${dataHora(a.expiraEm)}.` : 'Ainda não autorizada.'),
+      linha('assinatura', 'Sua autorização', a ? `Registrada em ${horarioBrasilia(a.em) || 'horário não informado'}; validade até ${horarioBrasilia(a.expiraEm) || 'horário não informado'}. O envio ainda exige as verificações.` : 'Sem autorização para esta versão. Copiar o código não autoriza.'),
       linha('roblox', 'Arquivo', [nomeArquivo(l), tamanhoMB(l.artefato?.tamanho)].filter(Boolean).join(' · ')),
       linha('cadeado', 'Código completo (SHA-256)', h('code', { class: 'dc-hash' }, l.artefato?.sha256 || '—'))),
   });
 }
 
 function cardLancamentoCompacto(l) {
-  const q = quandoPublica(l);
   const incl = (l.propostaIds || []).map(id => propostas().find(p => p.id === id)).filter(Boolean);
   const mini = pacoteEhImagem(l) ? moldura('dc-midia-card', ehEvento(l) ? 'evento' : 'thumbnail', imagemPacote(l)) : incl[0] ? miniaturaProposta(incl[0]) : moldura('dc-midia-card', 'roblox', null);
-  return h('button', { type: 'button', class: 'dc-card-proposta', onclick: () => abrirLancamento(l.id), 'aria-label': `Abrir publicação ${l.id}` },
+  return h('article', { class: 'dc-card-proposta dc-card-lancamento' },
+    h('button', { type: 'button', class: 'dc-abrir-lancamento', onclick: () => abrirLancamento(l.id), 'aria-label': `Abrir publicação ${l.id}: ${fluxo(l).titulo}` },
     mini,
     h('div', { class: 'dc-card-corpo' },
-      h('div', { class: 'dc-card-chips' }, seloStatus(l.status), chipTipoLanc(l)),
+      h('div', { class: 'dc-card-chips' }, chipTipoLanc(l)),
       h('h3', { class: 'dc-card-titulo' }, curto((l.changelog || [])[0] || l.id, 80)),
       h('p', { class: 'dc-card-resumo' }, `${l.id} · código ${codigoPacote(l) || '—'}`),
-      h('div', { class: 'dc-card-pe' }, h('span', { class: 'dc-pe-data' }, icone('calendario', { tamanho: 16 }), l.publicadoEm ? `Publicada ${dataCurta(l.publicadoEm)}` : q.texto), h('span', { class: 'dc-pe-abrir' }, 'Ver', icone('direita', { tamanho: 18 })))));
+      h('span', { class: 'dc-pe-abrir' }, 'Ver situação e detalhes', icone('direita', { tamanho: 18 })))),
+    blocoFluxo(l, { compacto: true }));
 }
 
 function abrirLancamento(id) {
   const l = lancamentos().find(x => x.id === id);
   if (!l) return;
-  const q = quandoPublica(l);
+  if (l.status === ST.AGUARDANDO_FINAL) {
+    const card = document.getElementById(`lanc-${l.id}`);
+    if (card) {
+      card.scrollIntoView({ block: 'start' });
+      (document.getElementById(`dc-conf-${l.id}`) || card).focus({ preventScroll: true });
+      return;
+    }
+  }
   const a = l.autorizacao?.dados;
   abrirModal({
     titulo: tituloLanc(l),
     classe: 'dc-modal',
-    conteudo: h('div', { class: 'dc-detalhe' },
+    conteudo: fechar => h('div', { class: 'dc-detalhe' },
+      blocoEvidencias(l, fechar), blocoFluxo(l, { fechar, atalho: false }),
       midiaDoLancamento(l),
       h('div', { class: 'dc-card-chips' }, seloStatus(l.status), chip(l.id, { iconeNome: 'foguete' })),
       h('div', { class: 'dc-aut-fatos' },
-        h('div', { class: 'dc-fato' }, icone('calendario', { tamanho: 22 }), h('div', {}, h('div', { class: 'dc-fato-rot' }, l.publicadoEm ? 'Publicada em' : ehEvento(l) ? 'Começa' : 'Vai para o jogo'), h('strong', {}, l.publicadoEm ? dataHora(l.publicadoEm) : q.dia), !l.publicadoEm && q.hora ? h('div', { class: 'dc-fato-sub' }, `às ${q.hora}`) : null)),
-        h('div', { class: `dc-fato ${a ? 'ok' : ''}` }, icone('assinatura', { tamanho: 22 }), h('div', {}, h('div', { class: 'dc-fato-rot' }, 'Sua autorização'), h('strong', {}, a ? 'Assinada' : 'Ainda não'), a ? h('div', { class: 'dc-fato-sub' }, `vale até ${dataCurta(a.expiraEm)}`) : null))),
+        h('div', { class: `dc-fato ${a ? 'ok' : ''}` }, icone('assinatura', { tamanho: 22 }), h('div', {}, h('div', { class: 'dc-fato-rot' }, 'Sua autorização'), h('strong', {}, a ? 'Registrada' : 'Sem autorização desta versão'), a ? h('div', { class: 'dc-fato-sub' }, `Validade: ${horarioBrasilia(a.expiraEm) || 'não informada'}`) : null))),
       h('section', { class: 'dc-muda' }, h('h4', { class: 'dc-sub' }, icone('raio', { tamanho: 18 }), 'O que muda'),
         (l.changelog || []).length ? h('ul', { class: 'dc-checks' }, l.changelog.map(c => h('li', {}, icone('ok', { tamanho: 16 }), h('span', {}, c)))) : h('p', { class: 'dc-fraco' }, '—')),
       blocoCodigo(l),
@@ -651,19 +722,25 @@ function abrirLancamento(id) {
 export function telaDecisoes() {
   if (!ctx.estado?.dados) return vazio('Carregando…', 'relogio');
   const sub = ctx.estado.sub || (ctx.estado.sub = {});
+  const pedido = typeof sub.decisoes === 'object' && sub.decisoes?.id ? sub.decisoes : null;
+  if (pedido) {
+    sub.decisoesArea = pedido.tipo === 'proposta' ? 'ideias' : 'publicacoes';
+    sub.decisoes = pedido.tipo === 'lancamento' && lancamentos().some(l => l.id === pedido.id && l.status === ST.AGUARDANDO_FINAL) ? 'aberto' : 'todas';
+  }
   const todasP = [...propostas()].reverse();
   const todasL = [...lancamentos()].reverse();
   const ideiasPendentes = todasP.filter(p => DECIDIVEIS.includes(p.status) && !p.bloqueio).length;
   const pubPendentes = todasL.filter(l => l.status === ST.AGUARDANDO_FINAL).length;
 
   // Área padrão: se há publicação esperando, ela vem primeiro (é a etapa mais importante).
-  const area = sub.decisoesArea || (pubPendentes ? 'publicacoes' : 'ideias');
-  const filtro = sub.decisoes && SUBABAS.some(s => s[0] === sub.decisoes) ? sub.decisoes : 'aberto';
+  const area = sub.decisoesArea || (todasL.some(l => [ST.AGUARDANDO_FINAL, ST.APROVADA_PUB, ST.DEVOLVIDA, ST.BLOQUEADA].includes(l.status)) ? 'publicacoes' : 'ideias');
+  const filtroInicial = area === 'publicacoes' && !pubPendentes ? 'todas' : 'aberto';
+  const filtro = sub.decisoes && SUBABAS.some(s => s[0] === sub.decisoes) ? sub.decisoes : filtroInicial;
   const escolher = (chave, valor) => { sub[chave] = valor; ctx.render?.(); };
 
   const botaoArea = (id, iconeNome, n, rotulo, explica) => h('button', {
     type: 'button', class: `dc-area${area === id ? ' ativa' : ''}${n ? ' tem' : ''}`, 'aria-pressed': String(area === id),
-    onclick: () => { sub.decisoesArea = id; sub.decisoes = n ? 'aberto' : sub.decisoes; ctx.render?.(); },
+    onclick: () => { sub.decisoesArea = id; sub.decisoes = n ? 'aberto' : 'todas'; ctx.render?.(); },
   },
   h('span', { class: 'dc-area-icone' }, icone(iconeNome, { tamanho: 26 })),
   h('span', { class: 'dc-area-num' }, String(n)),
@@ -712,14 +789,16 @@ export function telaDecisoes() {
       return chip(`${nome} ${Math.min(meta, feitas[c])}/${meta}`, { tom: feitas[c] >= meta ? 'ok' : '', iconeNome: ic });
     })));
 
-  return h('div', { class: 'tela-decisoes' },
+  const tela = h('div', { class: 'tela-decisoes' },
     h('div', { class: 'dc-areas' },
       botaoArea('ideias', 'lampada', ideiasPendentes, 'Ideias para aprovar', 'Libere a equipe para preparar'),
       botaoArea('publicacoes', 'foguete', pubPendentes, 'Publicações para autorizar', 'Libere o que vai para o jogo')),
     blocoSemana,
-    h('div', { class: 'dc-filtros', role: 'tablist', 'aria-label': 'Filtrar por situação' },
-      SUBABAS.map(([id, nome]) => h('button', { type: 'button', role: 'tab', class: 'dc-filtro', 'aria-selected': String(filtro === id), onclick: () => escolher('decisoes', id) },
+    h('div', { class: 'dc-filtros', role: 'group', 'aria-label': 'Filtrar por situação' },
+      SUBABAS.map(([id, nome]) => h('button', { type: 'button', class: 'dc-filtro', 'aria-pressed': String(filtro === id), onclick: () => escolher('decisoes', id) },
         nome, h('span', { class: 'dc-filtro-n' }, String(contagem[id]))))),
     h('p', { class: 'dc-explica-filtro' }, icone('filtro', { tamanho: 16 }), explicacao),
     conteudo);
+  if (pedido) requestAnimationFrame(() => pedido.tipo === 'proposta' ? abrirProposta(pedido.id) : abrirLancamento(pedido.id));
+  return tela;
 }

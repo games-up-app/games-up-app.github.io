@@ -1,0 +1,43 @@
+/* Comunicação no celular: evidências e ação principal antes dos demais atalhos. */
+.sua-atualizacao { display:grid; gap:10px; padding:18px 16px; min-width:0; border-top:4px solid var(--brand-text); box-shadow:none; }
+.sua-atualizacao h2 { font-size:1.3rem; margin:0; }
+.sua-atualizacao p { margin:0; }
+.atualizacao-rotulo { display:flex; align-items:center; gap:8px; color:var(--brand-text); font-weight:750; }
+.atualizacao-evidencias { color:var(--text-2); font-size:.9rem; font-weight:650; }
+.atualizacao-acoes, .avisos-acoes { display:flex; gap:10px; flex-wrap:wrap; }
+.sua-atualizacao .atualizacao-ver { width:100%; min-height:52px; }
+.atualizacao-proximo { font-size:.9rem; }
+.presenca-equipe { display:grid; gap:14px; padding:18px 0; }
+.presenca-equipe h2 { font-size:1rem; margin:0; }
+.presenca-lista { display:grid; gap:14px; }
+.presenca-item { display:flex; align-items:flex-start; gap:12px; min-width:0; }
+.presenca-avatar { position:relative; width:44px; height:44px; flex:0 0 44px; display:grid; place-items:center; border-radius:50%; background:var(--brand-soft); color:var(--brand-text); font-weight:750; overflow:hidden; }
+.presenca-avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; background:var(--surface); padding:7px; }
+.presenca-item p { margin:3px 0 0; overflow-wrap:anywhere; }
+.presenca-item.trabalhando strong { color:var(--brand-text); }
+.pagina-avisos { display:grid; gap:24px; min-width:0; }
+.avisos-cabecalho h1 { display:flex; align-items:center; gap:8px; }
+.avisos-lista { list-style:none; padding:0; margin:0; }
+.aviso-item { padding:22px 0; border-top:1px solid var(--border); min-width:0; overflow-wrap:anywhere; }
+.aviso-item.novo { border-top:2px solid var(--brand-text); }
+.aviso-item h2 { margin:10px 0 5px; }
+.aviso-item time { display:block; color:var(--text-2); font-size:.85rem; margin-bottom:10px; }
+.aviso-evidencias { font-weight:650; }
+.and-registro-compacto { display:grid; grid-template-columns:56px minmax(0,1fr) auto; align-items:center; gap:12px; padding:12px 0; border:0; border-radius:0; border-bottom:1px solid var(--border); background:transparent; box-shadow:none; }
+.and-registro-compacto p, .and-registro-compacto h2 { margin:0; }
+.and-registro-compacto h2 { font-size:.95rem; }
+.and-registro-compacto time { margin:4px 0; font-size:.75rem; }
+.and-registro-compacto .btn { padding:8px 10px; font-size:.85rem; min-height:44px; }
+.and-registro-chamada { min-width:0; }
+.and-registro-miniatura { width:56px; height:56px; border-radius:8px; background:var(--surface-2); overflow:hidden; display:grid; place-items:center; }
+.and-registro-miniatura .and-midia-espera { min-height:56px; height:56px; }
+.and-registro-miniatura .and-midia { width:56px; }
+.and-registro-miniatura img { width:56px; height:56px; object-fit:cover; border-radius:0; }
+.pagina-andamento .and-linha-tempo { gap:0; border:0; padding:0; }
+.pagina-andamento .and-resumo { border:0; box-shadow:none; padding:12px 0; background:transparent; }
+.and-detalhes-texto { white-space:pre-wrap; }
+.and-folha-registro .and-registro { padding:0; border:0; box-shadow:none; }
+@media(min-width:700px) {
+  .presenca-lista { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(max-width:420px) { .avisos-acoes .btn { width:100%; } }

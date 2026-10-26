@@ -49,8 +49,8 @@
 }
 .dc-filtro { font: inherit; font-weight: 700; font-size: .92rem; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-2); cursor: pointer; }
 .dc-filtro-n { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--surface-2); color: var(--text-2); font-size: .78rem; display: inline-grid; place-items: center; font-variant-numeric: tabular-nums; }
-.dc-filtro[aria-selected="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
-.dc-filtro[aria-selected="true"] .dc-filtro-n { background: var(--dc-amarelo); color: #1b1b1a; }
+.dc-filtro[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+.dc-filtro[aria-pressed="true"] .dc-filtro-n { background: var(--dc-amarelo); color: #1b1b1a; }
 .dc-explica-filtro { margin: -4px 0 0; color: var(--muted); font-size: .9rem; display: flex; gap: 6px; align-items: center; }
 
 /* ---------- cards de proposta (botões com miniatura) ---------- */
@@ -285,3 +285,37 @@
 .dc-resumo-botao { width: 100%; font: inherit; text-align: left; cursor: pointer; border-top: 0; border-right: 0; border-bottom: 0; }
 .dc-resumo-botao:focus-visible { outline: 3px solid var(--brand-text); outline-offset: 2px; }
 .dc-resumo-botao .dc-info-mais { margin-top: 6px; }
+
+/* Fluxo sempre visível: evidências primeiro, próxima ação e confirmação separadas. */
+.dc-fluxo, .dc-evidencias { display: grid; gap: 10px; min-width: 0; padding-block: 14px; border-block: 1px solid var(--border); color: var(--text); overflow-wrap: anywhere; }
+.dc-fluxo p, .dc-evidencias p { margin: 0; line-height: 1.45; }
+.dc-evidencias > strong { display: flex; align-items: center; gap: 8px; }
+.dc-evidencias > strong .icone { flex: none; color: var(--brand-text); }
+.dc-fluxo > .chip { justify-self: start; max-width: 100%; white-space: normal; height: auto; }
+.dc-trilha { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.dc-trilha-passo { display: flex; align-items: flex-start; gap: 8px; min-width: 0; font-size: .9rem; line-height: 1.35; color: var(--muted); }
+.dc-trilha-passo > .icone { flex: none; margin-top: 2px; }
+.dc-trilha-passo small { display: block; font-weight: 400; }
+.dc-trilha-passo.atual { color: var(--brand-text); font-weight: 750; }
+.dc-trilha-passo.concluida { color: var(--ok); }
+.dc-trilha-passo.impedida { color: var(--warn); font-weight: 750; }
+.dc-proxima { color: var(--text); }
+.dc-fluxo-horario { display: flex; gap: 8px; align-items: flex-start; color: var(--text-2); font-size: .9rem; }
+.dc-fluxo-horario > .icone { flex: none; margin-top: 2px; }
+.dc-reentrega { border-left: 3px solid var(--warn); padding-left: 10px; }
+.dc-marcos { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: .9rem; color: var(--text-2); }
+.dc-card-lancamento { cursor: default; }
+.dc-card-lancamento:active { transform: none; }
+.dc-card-lancamento > .dc-fluxo { margin: 0 14px 14px; }
+.dc-abrir-lancamento { display: flex; flex-direction: column; width: 100%; min-width: 0; min-height: 44px; padding: 0; font: inherit; color: inherit; background: transparent; border: 0; text-align: left; cursor: pointer; }
+.dc-abrir-lancamento .dc-card-corpo { width: 100%; }
+.dc-abrir-lancamento .dc-pe-abrir { min-height: 44px; }
+.dc-card-lancamento .dc-trilha { grid-template-columns: 1fr; }
+.dc-link, .dc-fato .dc-link, .dc-filtro { min-height: 44px; min-width: 44px; }
+.dc-link:focus-visible, .dc-abrir-lancamento:focus-visible, .dc-codigo .btn-copiar:focus-visible { outline: 3px solid var(--brand-text); outline-offset: 2px; }
+.dc-abrir-lancamento:focus-visible { outline-offset: -4px; }
+.dc-codigo .btn-copiar:focus-visible { outline-color: #fdd001; }
+@media (max-width: 380px) {
+  .dc-trilha { grid-template-columns: 1fr; }
+  .dc-filtros .dc-filtro { white-space: normal; overflow-wrap: anywhere; }
+}
