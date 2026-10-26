@@ -22,6 +22,13 @@
 .dc-link { font: inherit; font-weight: 650; background: none; border: 0; padding: 6px 0; color: var(--brand-text); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: underline; text-underline-offset: 3px; }
 .dc-centro { justify-self: center; text-align: center; margin-inline: auto; }
 .dc-fraco { color: var(--muted); font-size: .9rem; margin: 0; }
+.dc-hub { display: grid; gap: 10px; }
+.dc-hub-categoria { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; text-align: left; padding: 16px; }
+.dc-hub-categoria strong, .dc-hub-categoria small { display: block; }
+.dc-hub-categoria small { margin-top: 4px; color: var(--text-2); font-weight: 400; }
+.dc-categoria h2 { margin: 0 0 4px; font-size: 1.15rem; }
+.dc-etapas { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.dc-etapas .dc-filtro { white-space: normal; }
 
 /* ---------- dois botões grandes do topo ---------- */
 .dc-areas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -44,7 +51,7 @@
 .dc-filtros { display: flex; flex-wrap: wrap; gap: 8px; }
 @media (max-width: 560px) {
   .dc-filtros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-  .dc-filtros .dc-filtro { justify-content: center; padding: 6px 6px; font-size: .84rem; gap: 4px; }
+  .dc-filtros .dc-filtro { justify-content: center; padding: 6px 6px; font-size: .84rem; gap: 4px; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
   .dc-filtros .dc-filtro-n { min-width: 20px; height: 20px; font-size: .72rem; padding: 0 5px; }
 }
 .dc-filtro { font: inherit; font-weight: 700; font-size: .92rem; display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-2); cursor: pointer; }
@@ -54,23 +61,28 @@
 .dc-explica-filtro { margin: -4px 0 0; color: var(--muted); font-size: .9rem; display: flex; gap: 6px; align-items: center; }
 
 /* ---------- cards de proposta (botões com miniatura) ---------- */
-.dc-grade-cards { display: grid; grid-template-columns: 1fr; gap: 12px; }
-@media (min-width: 720px) { .dc-grade-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1100px) { .dc-grade-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.dc-grade-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; min-width: 0; }
+@media (min-width: 1100px) { .dc-grade-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .dc-pilha { display: grid; gap: 16px; }
-.dc-card-proposta { font: inherit; color: var(--text); text-align: left; display: flex; flex-direction: column; padding: 0; border-radius: var(--dc-raio); border: 1.5px solid var(--border); background: var(--surface); overflow: hidden; cursor: pointer; min-width: 0; box-shadow: 0 1px 2px rgba(0,0,0,.04); transition: transform .12s ease, box-shadow .15s, border-color .15s; }
-.dc-card-proposta:hover { border-color: var(--brand-text); box-shadow: 0 8px 22px rgba(0,0,0,.08); }
+.dc-card-proposta { font: inherit; color: var(--text); text-align: left; padding: 0; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); min-width: 0; transition: border-color .15s; }
+.dc-card-proposta:hover { border-color: var(--brand-text); }
 .dc-card-proposta:active { transform: scale(.99); }
 .dc-card-proposta.pede-voce { border-color: color-mix(in srgb, var(--dc-amarelo) 70%, var(--border)); }
-.dc-card-corpo { padding: 12px 14px 14px; display: grid; gap: 6px; min-width: 0; }
+.dc-card-corpo { display: grid; gap: 3px; min-width: 0; }
 .dc-card-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .dc-card-chips .chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-.dc-card-titulo { margin: 2px 0 0; font-size: 1.05rem; line-height: 1.25; font-weight: 800; overflow-wrap: anywhere; }
+.dc-card-titulo { margin: 0; font-size: 1rem; line-height: 1.3; font-weight: 800; }
+.dc-card-titulo, .dc-card-estado, .dc-card-proxima { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-card-estado, .dc-card-proxima { margin: 0; font-size: .85rem; line-height: 1.35; }
+.dc-card-estado { color: var(--text-2); font-weight: 700; }
+.dc-card-estado.ok { color: var(--ok); }
+.dc-card-estado.warn { color: var(--warn); }
+.dc-card-estado.bad { color: var(--bad); }
+.dc-card-proxima { color: var(--text-2); }
 .dc-card-resumo { margin: 0; color: var(--text-2); font-size: .92rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .dc-card-pe { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 4px; }
 .dc-pe-data { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: .85rem; }
-.dc-pe-abrir { display: inline-flex; align-items: center; gap: 4px; font-weight: 800; color: var(--brand-text); }
-.dc-card-proposta.pede-voce .dc-pe-abrir { background: var(--brand); color: #fff; padding: 6px 10px 6px 14px; border-radius: 999px; }
+.dc-pe-abrir { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; font-weight: 750; color: var(--brand-text); font-size: .9rem; }
 
 /* ---------- imagens ---------- */
 .dc-midia { position: relative; overflow: hidden; background: linear-gradient(135deg, var(--brand-soft), color-mix(in srgb, var(--dc-amarelo) 18%, var(--surface-2))); color: var(--brand-text); }
@@ -80,6 +92,7 @@
 .dc-midia-heroi { aspect-ratio: 16 / 9; width: 100%; border-radius: 16px; }
 .dc-midia-tira { aspect-ratio: 16 / 9; width: 100%; border-radius: 10px; }
 .dc-midia-mini { width: 84px; aspect-ratio: 16 / 9; border-radius: 10px; flex: none; }
+.dc-midia-lista { width: 80px; height: 80px; border-radius: 8px; }
 .dc-midia-mini .dc-midia-reserva .icone, .dc-midia-tira .dc-midia-reserva .icone { width: 22px; height: 22px; }
 
 /* ---------- modal da proposta ---------- */
@@ -92,8 +105,9 @@
 .dc-etiqueta.curiosidade { background: #fff4c2; color: #6b4f00; }
 .dc-etiqueta.relevante { background: #ede0ff; color: #5a00a8; }
 .dc-etiqueta.exata { background: #1b1b1a; color: #fdd001; }
-.dc-tiras { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
-.dc-tira { padding: 0; border: 2px solid transparent; border-radius: 12px; background: none; cursor: pointer; }
+.dc-tiras { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(84px, 100%), 1fr)); gap: 8px; min-width: 0; }
+.dc-tira { padding: 0; border: 2px solid transparent; border-radius: 12px; background: none; cursor: pointer; min-width: 44px; min-height: 44px; }
+.dc-tira:focus-visible { outline: 3px solid var(--brand-text); outline-offset: 2px; }
 .dc-tira.ativa { border-color: var(--brand); }
 .dc-detalhe-titulo { margin: 0; font-size: 1.35rem; line-height: 1.2; font-weight: 850; overflow-wrap: anywhere; }
 .dc-resumo-destaque { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 16px; background: var(--brand-soft); color: var(--text); border-left: 5px solid var(--brand); }
@@ -240,7 +254,6 @@
 :root[data-theme="dark"] .dc-etiqueta.relevante { background: #2c1650; color: #d2b4ff; }
 :root[data-theme="dark"] .dc-codigo, :root[data-theme="dark"] .dc-arquivo-jogo { background: #000; border: 1px solid #3a3a38; }
 :root[data-theme="dark"] .dc-autorizacao { box-shadow: 0 10px 40px rgba(155, 60, 255, .25), 0 2px 14px rgba(253, 208, 1, .18); }
-:root[data-theme="dark"] .dc-card-proposta:hover { box-shadow: 0 8px 22px rgba(0,0,0,.4); }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .dc-etiqueta.curiosidade, :root:not([data-theme="light"]) .dc-confirma-icone.amarelo { background: #3d3208; color: #ffe27a; }
   :root:not([data-theme="light"]) .dc-etiqueta.relevante { background: #2c1650; color: #d2b4ff; }
@@ -259,6 +272,15 @@
 .dc-midia-heroi { max-height: 46vh; }
 .dc-midia-heroi img { object-fit: contain; background: #000; }
 .dc-autorizacao { max-width: 860px; width: 100%; justify-self: center; }
+
+/* Kit do evento fica na folha e só carrega quando solicitado. */
+.dc-kit { display: grid; gap: 14px; min-width: 0; }
+.dc-kit p { margin: 0; }
+.dc-kit-campo { display: grid; gap: 8px; min-width: 0; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.dc-kit-valor { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text); }
+.dc-kit .btn-copiar { justify-self: start; min-width: 44px; min-height: 44px; white-space: normal; }
+.dc-kit a { min-height: 44px; text-decoration: none; overflow-wrap: anywhere; }
+.dc-kit .btn-copiar:focus-visible, .dc-kit a:focus-visible { outline: 3px solid var(--brand-text); outline-offset: 2px; }
 
 /* Meta da semana: no mínimo 7 propostas por categoria */
 .dc-meta-semana { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 16px; background: var(--surface-2); margin: 4px 0 8px; }
@@ -286,7 +308,7 @@
 .dc-resumo-botao:focus-visible { outline: 3px solid var(--brand-text); outline-offset: 2px; }
 .dc-resumo-botao .dc-info-mais { margin-top: 6px; }
 
-/* Fluxo sempre visível: evidências primeiro, próxima ação e confirmação separadas. */
+/* Fluxo completo apenas nos modais: evidências, próxima ação e confirmação. */
 .dc-fluxo, .dc-evidencias { display: grid; gap: 10px; min-width: 0; padding-block: 14px; border-block: 1px solid var(--border); color: var(--text); overflow-wrap: anywhere; }
 .dc-fluxo p, .dc-evidencias p { margin: 0; line-height: 1.45; }
 .dc-evidencias > strong { display: flex; align-items: center; gap: 8px; }
@@ -306,8 +328,8 @@
 .dc-marcos { margin: 0; padding-left: 18px; display: grid; gap: 6px; font-size: .9rem; color: var(--text-2); }
 .dc-card-lancamento { cursor: default; }
 .dc-card-lancamento:active { transform: none; }
-.dc-card-lancamento > .dc-fluxo { margin: 0 14px 14px; }
-.dc-abrir-lancamento { display: flex; flex-direction: column; width: 100%; min-width: 0; min-height: 44px; padding: 0; font: inherit; color: inherit; background: transparent; border: 0; text-align: left; cursor: pointer; }
+.dc-abrir-lancamento, button.dc-card-ideia { display: grid; grid-template-columns: 80px minmax(0, 1fr); align-items: start; gap: 12px; width: 100%; min-width: 0; min-height: 44px; padding: 12px; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.dc-abrir-lancamento { background: transparent; border: 0; border-radius: inherit; }
 .dc-abrir-lancamento .dc-card-corpo { width: 100%; }
 .dc-abrir-lancamento .dc-pe-abrir { min-height: 44px; }
 .dc-card-lancamento .dc-trilha { grid-template-columns: 1fr; }

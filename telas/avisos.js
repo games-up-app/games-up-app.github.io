@@ -1,7 +1,7 @@
 // Histórico de avisos dentro do app: funciona também sem permissão de push.
-import { h, icone, chip } from '../ui/componentes.js?v=20261025-comunicacao3';
-import { ctx } from '../ui/contexto.js?v=20261025-comunicacao3';
-import { listarAvisos, novosAvisos, lerAvisosLidos, marcarAvisoLido, dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261025-comunicacao3';
+import { h, icone, chip } from '../ui/componentes.js?v=20261025-categorias4';
+import { ctx } from '../ui/contexto.js?v=20261025-categorias4';
+import { listarAvisos, novosAvisos, lerAvisosLidos, marcarAvisoLido, dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261025-categorias4';
 
 export function telaAvisos() {
   const avisos = listarAvisos(ctx.estado.dados);

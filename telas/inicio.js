@@ -1,13 +1,13 @@
 // Tela Início: boas-vindas, jogo ao vivo, semana, notícia do dia, o que precisa de você e resumo.
 // Subpágina "noticias" (estado.sub.inicio === 'noticias'): todas as notícias com filtros.
-import { h, icone, chip, iconeDoTipo, abrirFolha } from '../ui/componentes.js?v=20261025-comunicacao3';
-import { ctx } from '../ui/contexto.js?v=20261025-comunicacao3';
-import { resumoAtualizacao, listarAvisos, novosAvisos, lerAvisosLidos, marcarAvisoLido, dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261025-comunicacao3';
-import { avaliarPresenca } from '../nucleo/presenca.js?v=20261025-comunicacao3';
+import { h, icone, chip, iconeDoTipo, abrirFolha } from '../ui/componentes.js?v=20261025-categorias4';
+import { ctx } from '../ui/contexto.js?v=20261025-categorias4';
+import { resumoAtualizacao, listarAvisos, novosAvisos, lerAvisosLidos, marcarAvisoLido, dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261025-categorias4';
+import { avaliarPresenca } from '../nucleo/presenca.js?v=20261025-categorias4';
 import {
   FUSO, num, pct, compacto, dataBR, horaBR, haQuanto, textoCurto, urlSegura, botaoLink, imagemExterna, miniaturaIcone,
   cabecalhoSecao, botaoTexto, topoSubpagina, filtrosChips, campo, blocoNumero, miniGrafico, chipStatus, cardClicavel, cardBotao,
-} from './comum.js?v=20261025-comunicacao3';
+} from './comum.js?v=20261025-categorias4';
 
 const d = () => ctx.estado.dados || {};
 
@@ -173,9 +173,9 @@ function cardJogo() {
       h('span', { class: `selo-vivo${n.vivo ? ' ligado' : ''}` }, h('i', {}), n.vivo ? 'Ao vivo' : 'Recente')),
     h('div', { class: 'jogo-numero' },
       h('strong', {}, num(n.jogando)),
-      h('span', {}, icone('jogadores', { tamanho: 18 }), 'jogando agora')),
+      h('span', {}, icone('jogadores', { tamanho: 18 }), n.vivo ? 'jogando agora' : 'na última leitura')),
     h('p', { class: 'jogo-hora' }, n.vivo ? `Ao vivo · ${horaBR(n.vivo.em)}` : `Atualizado às ${horaBR(n.em)} · ${haQuanto(n.em)}`),
-    grafico ? h('div', { class: 'jogo-grafico' }, grafico, h('div', { class: 'jogo-grafico-legenda' }, h('span', {}, jogo.historico?.[0]?.em ? dataBR(jogo.historico[0].em) : ''), h('span', {}, `Pico da semana: ${num(jogo.picoSemana)}`), h('span', {}, 'Agora')))
+    grafico ? h('div', { class: 'jogo-grafico' }, grafico, h('div', { class: 'jogo-grafico-legenda' }, h('span', {}, jogo.historico?.[0]?.em ? dataBR(jogo.historico[0].em) : ''), h('span', {}, `Pico observado: ${num(jogo.picoSemana)}`), h('span', {}, n.vivo ? 'Agora' : 'Última leitura')))
       : h('p', { class: 'jogo-grafico-vazio' }, icone('grafico', { tamanho: 16 }), 'O gráfico da semana aparece com mais leituras.'),
     h('div', { class: 'jogo-mini' },
       h('div', {}, icone('olho', { tamanho: 16 }), h('strong', {}, compacto(n.visitas)), h('span', {}, 'visitas')),
@@ -190,6 +190,10 @@ function folhaJogo() {
   const n = numerosDoJogo();
   const { jogo, a } = n;
   const hist = jogo.historico || [];
+  const leiturasHoje = hist.filter(x => Number.isSafeInteger(x.jogando) && x.jogando >= 0 &&
+    Number.isFinite(Date.parse(x.em)) && Date.parse(x.em) <= Date.now() &&
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(x.em)) === hojeYMD());
+  const picoHoje = leiturasHoje.length ? Math.max(...leiturasHoje.map(x => x.jogando)) : null;
   const grafico = miniGrafico(hist.map(x => x.jogando), { altura: 110, rotulo: 'Jogadores online na semana' });
   abrirFolha({
     titulo: jogo.nome || 'Escola Brasileira',
@@ -197,7 +201,8 @@ function folhaJogo() {
       h('div', { class: 'folha-jogo-topo' }, iconeJogo(jogo, 'jogo-icone grande'),
         h('div', {}, h('strong', { class: 'folha-grande' }, num(n.jogando)), h('span', { class: 'sinc' }, n.vivo ? `jogando agora · ao vivo às ${horaBR(n.vivo.em)}` : `jogando · leitura das ${horaBR(n.em)}`))),
       h('div', { class: 'grade-numeros' },
-        blocoNumero('trofeu', num(jogo.picoSemana), 'pico da semana'),
+        blocoNumero('trofeu', num(picoHoje), 'pico observado hoje'),
+        blocoNumero('trofeu', num(jogo.picoSemana), 'pico observado em até 7 dias'),
         blocoNumero('olho', num(n.visitas), 'visitas'),
         blocoNumero('estrela', num(n.favoritos), 'favoritos'),
         blocoNumero('like', num(a.likes), 'gostei', 'ok'),
@@ -208,7 +213,7 @@ function folhaJogo() {
       h('h3', { class: 'folha-subtitulo' }, icone('grafico', { tamanho: 18 }), 'Jogadores online na semana'),
       grafico ? h('div', { class: 'grafico-folha' }, grafico) : h('p', { class: 'sinc' }, 'Ainda há poucas leituras. O gráfico aparece com o passar das horas.'),
       hist.length ? h('div', { class: 'lista-mini' }, [...hist].reverse().slice(0, 8).map(x => h('div', { class: 'lista-mini-item' }, h('span', {}, dataBR(x.em)), h('strong', {}, `${num(x.jogando)} jogando`)))) : null,
-      h('p', { class: 'sinc' }, `Fonte: ${jogo.fonte || 'APIs públicas da Roblox'}.`)),
+      h('p', { class: 'sinc' }, `Fonte: ${jogo.fonte || 'APIs públicas da Roblox'}. Picos são os maiores valores observados nas coletas; podem existir valores maiores entre as leituras. O push atual avisa novos recordes dos últimos sete dias, não todo pico diário.`)),
     rodape: botaoLink(jogo.link, 'Ver na Roblox', { classe: 'btn primario grande', iconeNome: 'roblox' }),
   });
 }

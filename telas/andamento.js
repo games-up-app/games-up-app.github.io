@@ -1,10 +1,11 @@
 // Histórico visual do desenvolvimento. Só exibe evidências registradas, sem simular capturas.
-import { h, icone, chip, abrirModal, abrirFolha } from '../ui/componentes.js?v=20261025-comunicacao3';
-import { ctx } from '../ui/contexto.js?v=20261025-comunicacao3';
-import { semanaDe } from '../nucleo/andamento.js?v=20261025-comunicacao3';
-import { revisaoDaEtapa, podeRevisarEntrega } from '../nucleo/revisao-etapas.js?v=20261025-comunicacao3';
-import { dataHoraBrasilia, rotuloEtapa } from '../nucleo/central-avisos.js?v=20261025-comunicacao3';
-import { dataBR } from './comum.js?v=20261025-comunicacao3';
+import { h, icone, chip, abrirModal, abrirFolha } from '../ui/componentes.js?v=20261025-categorias4';
+import { ctx } from '../ui/contexto.js?v=20261025-categorias4';
+import { semanaDe } from '../nucleo/andamento.js?v=20261025-categorias4';
+import { revisaoDaEtapa, podeRevisarEntrega } from '../nucleo/revisao-etapas.js?v=20261025-categorias4';
+import { dataHoraBrasilia, rotuloEtapa } from '../nucleo/central-avisos.js?v=20261025-categorias4';
+import { dataBR } from './comum.js?v=20261025-categorias4';
+import { agruparAndamento, estadoAndamento } from '../nucleo/andamento-propostas.js?v=20261025-propostas1';
 
 const CATEGORIAS = { cenario: ['Cenário', 'imagem'], script: ['Scripts', 'tarefas'], interface: ['Interface', 'celular'], teste: ['Testes', 'qualidade'], toolbox: ['Toolbox', 'martelo'], geral: ['Geral', 'relogio'] };
 const urls = new Map();
@@ -127,13 +128,49 @@ export function abrirRegistro(r) {
 }
 
 function registro(r) {
-  const imagem = r.midias?.find(m => m.tipo === 'imagem');
   const rev = revisaoDaEtapa(ctx.estado.dados.andamento, r);
   return h('article', { class: 'card and-registro and-registro-compacto', 'data-registro-id': r.id },
-    h('div', { class: 'and-registro-miniatura', 'aria-hidden': 'true' }, imagem ? midia(imagem, true) : icone(r.midias?.some(m => m.tipo === 'video') ? 'play' : 'tarefas')),
+    h('div', { class: 'and-registro-miniatura', 'aria-hidden': 'true' }, icone(r.midias?.some(m => m.tipo === 'video') ? 'play' : 'tarefas')),
     h('div', { class: 'and-registro-chamada' }, h('h2', {}, r.titulo), h('time', { datetime: r.em }, dataHoraBrasilia(r.em)),
-      h('span', { class: 'sinc' }, `${r.propostaId} · ${rotuloEtapa(r)} · ${ROTULO_REVISAO[rev.status] || 'Entrega registrada'}`)),
+      h('span', { class: 'sinc' }, `${rotuloEtapa(r)} · ${r.midias?.length || 0} evidência(s) · ${ROTULO_REVISAO[rev.status] || 'Entrega registrada'}`)),
     h('button', { type: 'button', class: 'btn', 'aria-label': `Abrir: ${r.titulo}`, onclick: () => ctx.irPara('andamento', { ...ctx.estado.sub.andamento, id: r.id }) }, 'Abrir'));
+}
+
+function estadoDaProposta(p, detalhado = false) {
+  const box = h('div', { class: 'and-estado', 'aria-live': 'polite' });
+  const atualizar = () => {
+    const dados = ctx.estado.dados;
+    const atual = (dados.propostas?.propostas || []).find(item => item.id === p.id) || p;
+    const estado = estadoAndamento(atual, dados);
+    box.replaceChildren(chip(estado.texto, { tom: estado.tom }), ...(detalhado ? [h('p', { class: 'sinc' }, estado.detalhe)] : []));
+  };
+  atualizar();
+  const timer = setInterval(() => { if (!box.isConnected) clearInterval(timer); else atualizar(); }, 1000);
+  return box;
+}
+
+function abrirProposta(grupo) {
+  const { proposta: p } = grupo;
+  const registros = (agruparAndamento(ctx.estado.dados).find(g => g.proposta.id === p.id) || grupo).registros;
+  abrirFolha({ titulo: p.titulo, classe: 'and-folha-proposta', conteudo: h('div', { class: 'and-proposta-detalhes' },
+    estadoDaProposta(p, true),
+    h('p', {}, `${registros.length} registro(s) · histórico completo desta proposta, de todas as semanas.`),
+    h('p', { class: 'sinc' }, 'Abra um registro para ver evidências, comentários, revisão e testes.'),
+    registros.length ? h('div', { class: 'and-registros-proposta' }, registros.map(registro)) : h('p', {}, 'Ainda não há registros de desenvolvimento.'),
+    p.historica ? null : h('button', { type: 'button', class: 'btn', onclick: () => ctx.irPara('decisoes', { tipo: 'proposta', id: p.id }) }, icone('decisoes'), 'Ver proposta em Decisões')) });
+}
+
+function proposta(grupo) {
+  const p = grupo.proposta;
+  const previa = (p.previas || []).find(c => /\.(png|jpe?g|webp)$/i.test(c));
+  const rotuloImagem = /previas\/capas\//.test(previa || '') ? 'Capa sugerida do evento' : p.tipo === 'thumbnail' || /previas\/thumbnails\//.test(previa || '') ? 'Thumbnail proposta' : 'Imagem de referência';
+  const imagem = previa && typeof ctx.imagemPrivada === 'function' ? ctx.imagemPrivada(previa, { alt: `${rotuloImagem}: ${p.titulo}`, classe: 'and-proposta-imagem' }) : null;
+  return h('article', { class: 'and-proposta-card', 'data-proposta-id': p.id },
+    h('div', { class: 'and-proposta-miniatura' }, imagem || icone('imagem')),
+    h('div', { class: 'and-proposta-chamada' }, h('h2', {}, p.titulo),
+      h('span', { class: 'sinc' }, `${p.id} · ${rotuloImagem}`),
+      estadoDaProposta(p), h('span', { class: 'and-contador' }, `${grupo.registros.length} registro(s)`)),
+    h('button', { type: 'button', class: 'btn', 'aria-label': `Ver registros: ${p.titulo}`, onclick: () => abrirProposta(grupo) }, 'Abrir'));
 }
 
 export function telaAndamento() {
@@ -159,17 +196,18 @@ export function telaAndamento() {
     });
     return pagina;
   }
-  const semana = semanas.includes(selecao.semana) ? selecao.semana : semanas[0];
+  const semana = semanas.includes(selecao.semana) ? selecao.semana : '';
   const filtro = selecao.proposta || '';
-  const select = h('select', { 'aria-label': 'Semana do desenvolvimento', onchange: e => { ctx.estado.sub.andamento = { ...selecao, semana: e.target.value }; ctx.render(); } }, semanas.map(s => h('option', { value: s, selected: s === semana }, `Semana ${semanaRotulo(s)}`)));
-  const propostas = dados.propostas?.propostas || [];
+  const select = h('select', { 'aria-label': 'Semana do desenvolvimento', onchange: e => { ctx.estado.sub.andamento = { ...selecao, semana: e.target.value }; ctx.render(); } }, h('option', { value: '', selected: !semana }, 'Todas as semanas'), semanas.map(s => h('option', { value: s, selected: s === semana }, `Semana ${semanaRotulo(s)}`)));
+  const grupos = agruparAndamento(dados);
+  const propostas = grupos.map(g => g.proposta);
   const filtroProposta = h('select', { 'aria-label': 'Filtrar por proposta', onchange: e => { ctx.estado.sub.andamento = { ...selecao, semana, proposta: e.target.value }; ctx.render(); } }, h('option', { value: '' }, 'Todas as propostas'), propostas.map(p => h('option', { value: p.id, selected: p.id === filtro }, `${p.id} · ${p.titulo}`)));
-  const visiveis = lista.filter(r => r.semana === semana && (!filtro || r.propostaId === filtro) && (r.midias?.length || r.estadoEtapa === 'concluida'));
+  const visiveis = grupos.filter(g => (!filtro || g.proposta.id === filtro) && (!semana || g.registros.some(r => r.semana === semana)));
   return h('div', { class: 'pagina-andamento' },
-    h('section', { class: 'card and-resumo' }, h('h2', {}, icone('imagem'), 'O que já foi feito'), h('p', {}, 'Abra uma entrega para ver imagens, vídeos, revisão e testes. Evidências parciais não significam atualização concluída.'),
+    h('section', { class: 'card and-resumo' }, h('h2', {}, icone('imagem'), 'Andamento por proposta'), h('p', {}, 'Cada proposta reúne seu histórico. Abra para ver os registros, evidências, comentários e revisão.'),
       h('button', { type: 'button', class: 'btn', onclick: () => ctx.recarregar().catch(e => ctx.avisar(e.message, true)) }, icone('relogio'), 'Atualizar andamento')),
     h('div', { class: 'and-filtros' }, h('label', {}, 'Semana', select), h('label', {}, 'Proposta', filtroProposta)),
-    visiveis.length ? h('div', { class: 'and-linha-tempo' }, visiveis.slice(0, 5).map(registro),
-      visiveis.length > 5 ? h('button', { type: 'button', class: 'btn', onclick: () => abrirFolha({ titulo: 'Entregas anteriores desta semana', conteudo: h('div', { class: 'and-linha-tempo' }, visiveis.slice(5).map(registro)) }) }, `Ver entregas anteriores (${visiveis.length - 5})`) : null)
-      : h('section', { class: 'card vazio-card' }, icone('imagem', { tamanho: 36 }), h('h2', {}, 'Nenhuma entrega nesta seleção'), h('p', {}, 'As evidências concretas e as etapas concluídas aparecerão aqui. Os demais registros continuam disponíveis em Avisos.')));
+    h('p', { class: 'sinc' }, `${visiveis.length} proposta(s) nesta seleção`),
+    visiveis.length ? h('div', { class: 'and-propostas' }, visiveis.map(proposta))
+      : h('section', { class: 'card vazio-card' }, icone('imagem', { tamanho: 36 }), h('h2', {}, 'Nenhuma proposta nesta seleção'), h('p', {}, 'Propostas aprovadas e históricos de desenvolvimento aparecerão aqui.')));
 }

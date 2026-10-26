@@ -1,7 +1,7 @@
 // Tela Ajustes: conta, publicações (pausa, dia e horário), chave de autorização, celular e atalhos.
-import { h, icone, chip, interruptor, botaoCopiar, abrirFolha } from '../ui/componentes.js?v=20261025-comunicacao3';
-import { ctx } from '../ui/contexto.js?v=20261025-comunicacao3';
-import { dataBR, haQuanto, cabecalhoSecao, segmentado, campo, chipStatus, cardBotao, rotuloStatus } from './comum.js?v=20261025-comunicacao3';
+import { h, icone, chip, interruptor, botaoCopiar, abrirFolha } from '../ui/componentes.js?v=20261025-categorias4';
+import { ctx } from '../ui/contexto.js?v=20261025-categorias4';
+import { dataBR, haQuanto, cabecalhoSecao, segmentado, campo, chipStatus, cardBotao, rotuloStatus } from './comum.js?v=20261025-categorias4';
 
 const d = () => ctx.estado.dados || {};
 

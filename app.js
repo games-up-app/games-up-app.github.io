@@ -4,25 +4,27 @@
 // A publicação no jogo exige a assinatura feita pela chave deste aparelho (ver nucleo/).
 // Este arquivo cuida de: entrar, carregar os dados, barra de abas, notificações e o objeto ctx.
 // Cada tela fica em painel/telas/*.js e só usa o ctx.
-import { CONFIG } from './config.js?v=20261025-comunicacao3';
-import { RepoGitHub } from './nucleo/github.js?v=20261025-comunicacao3';
-import { criarApi } from './nucleo/api.js?v=20261025-comunicacao3';
-import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js?v=20261025-comunicacao3';
-import { chavePublicaVapid } from './nucleo/vapid.js?v=20261025-comunicacao3';
-import { ativarNoAparelho, diagnosticarNotificacoes } from './nucleo/notificacoes.js?v=20261025-comunicacao3';
-import { criarSincronizacao } from './nucleo/sincronizacao.js?v=20261025-comunicacao3';
-import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js?v=20261025-comunicacao3';
-import { ctx } from './ui/contexto.js?v=20261025-comunicacao3';
-import { telaInicio } from './telas/inicio.js?v=20261025-comunicacao3';
-import { telaDecisoes } from './telas/decisoes.js?v=20261025-comunicacao3';
-import { telaNumeros } from './telas/numeros.js?v=20261025-comunicacao3';
-import { telaPesquisa } from './telas/pesquisa.js?v=20261025-comunicacao3';
-import { telaAjustes } from './telas/ajustes.js?v=20261025-comunicacao3';
-import { telaTarefas } from './telas/tarefas.js?v=20261025-comunicacao3';
-import { telaAndamento } from './telas/andamento.js?v=20261025-comunicacao3';
-import { telaIdeias } from './telas/ideias.js?v=20261025-comunicacao3';
-import { telaAvisos } from './telas/avisos.js?v=20261025-comunicacao3';
-import { listarAvisos, novosAvisos, lerAvisosLidos } from './nucleo/central-avisos.js?v=20261025-comunicacao3';
+import { CONFIG } from './config.js?v=20261025-categorias4';
+import { RepoGitHub } from './nucleo/github.js?v=20261025-categorias4';
+import { criarApi } from './nucleo/api.js?v=20261025-categorias4';
+import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js?v=20261025-categorias4';
+import { chavePublicaVapid } from './nucleo/vapid.js?v=20261025-categorias4';
+import { ativarNoAparelho, diagnosticarNotificacoes } from './nucleo/notificacoes.js?v=20261025-categorias4';
+import { criarSincronizacao } from './nucleo/sincronizacao.js?v=20261025-categorias4';
+import { estadoConfirmacaoSaida } from './nucleo/confirmacao-saida.js?v=20261025-categorias4';
+import { carregarKitEvento } from './nucleo/kit-evento.js?v=20261025-categorias4';
+import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js?v=20261025-categorias4';
+import { ctx } from './ui/contexto.js?v=20261025-categorias4';
+import { telaInicio } from './telas/inicio.js?v=20261025-categorias4';
+import { telaDecisoes, telaRobloxStudio, telaEventos, telaThumbnails } from './telas/decisoes.js?v=20261025-categorias4';
+import { telaNumeros } from './telas/numeros.js?v=20261025-categorias4';
+import { telaPesquisa } from './telas/pesquisa.js?v=20261025-categorias4';
+import { telaAjustes } from './telas/ajustes.js?v=20261025-categorias4';
+import { telaTarefas } from './telas/tarefas.js?v=20261025-categorias4';
+import { telaAndamento } from './telas/andamento.js?v=20261025-categorias4';
+import { telaIdeias } from './telas/ideias.js?v=20261025-categorias4';
+import { telaAvisos } from './telas/avisos.js?v=20261025-categorias4';
+import { listarAvisos, novosAvisos, lerAvisosLidos } from './nucleo/central-avisos.js?v=20261025-categorias4';
 
 const estado = { usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null, pushAtivo: null };
 // Os dados ficam na organização games-up-app: o token precisa ter ela como "Resource owner".
@@ -33,7 +35,10 @@ const LINK_TOKEN_EQUIPE = 'https://github.com/settings/personal-access-tokens/ne
 // Abas da barra (embaixo no celular, na lateral no computador).
 const ABAS = [
   { id: 'inicio', nome: 'Início', icone: 'inicio', tela: telaInicio },
-  { id: 'decisoes', nome: 'Decisões', icone: 'decisoes', tela: telaDecisoes },
+  { id: 'decisoes', nome: 'Propostas', icone: 'decisoes', tela: telaDecisoes },
+  { id: 'studio', nome: 'Roblox Studio', icone: 'roblox', tela: telaRobloxStudio },
+  { id: 'eventos', nome: 'Eventos', icone: 'evento', tela: telaEventos },
+  { id: 'thumbnails', nome: 'Thumbnails', icone: 'thumbnail', tela: telaThumbnails },
   { id: 'andamento', nome: 'Andamento', icone: 'martelo', tela: telaAndamento },
   { id: 'ideias', nome: 'Ideias', icone: 'lampada', tela: telaIdeias },
   { id: 'numeros', nome: 'Números', icone: 'numeros', tela: telaNumeros },
@@ -198,6 +203,8 @@ function atualizarIndicador() {
   el.textContent = estado.erroSincronizacao ? 'Sem atualização · dados podem estar antigos' : estado.conferidoEm
     ? `Conferido às ${new Date(estado.conferidoEm).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit' })} · Brasília` : 'Conferindo dados…';
   el.classList.toggle('bad', !!estado.erroSincronizacao);
+  el.title = el.textContent;
+  el.closest('.barra-acompanhamento')?.classList.toggle('sinc-com-falha', !!estado.erroSincronizacao);
 }
 function mostrarDadosNovos(antes, depois) {
   document.getElementById('dados-novos')?.remove();
@@ -289,11 +296,24 @@ function alternarTema() {
 const temaAtual = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 
 async function sair() {
-  if (!confirm('Sair deste aparelho? Você vai precisar colar o token de novo.')) return;
-  await esquecerToken().catch(() => {});
-  estado.usuario = null; estado.repo = null; estado.cliente = null;
-  fecharTudo();
-  telaLogin('Você saiu.');
+  const inicio = Date.now();
+  let timer, enviando = false;
+  abrirFolha({ titulo: 'Sair do Games Up?', classe: 'folha-confirmar-saida', aoFechar: () => clearInterval(timer), conteudo: fechar => {
+    const confirmar = h('button', { type: 'button', class: 'btn perigo', disabled: true, onclick: async () => {
+      if (enviando || !estadoConfirmacaoSaida(inicio).liberado) return;
+      enviando = true; confirmar.disabled = true;
+      try {
+        await esquecerToken();
+        estado.usuario = null; estado.repo = null; estado.cliente = null;
+        clearInterval(timer); fecharTudo(); telaLogin('Você saiu deste aparelho.');
+      } catch { enviando = false; avisar('Não foi possível encerrar a sessão. Tente novamente.', true); confirmar.disabled = false; }
+    } });
+    const atualizar = () => { const c = estadoConfirmacaoSaida(inicio); confirmar.textContent = c.rotulo; confirmar.disabled = !c.liberado || enviando; };
+    atualizar(); timer = setInterval(atualizar, 200);
+    return h('div', {}, h('p', {}, 'Para entrar novamente neste aparelho, você precisará colar seu token do GitHub.'),
+      h('p', { class: 'sinc' }, 'Aguarde cinco segundos e confirme somente se quiser sair.'),
+      h('div', { class: 'acoes' }, h('button', { type: 'button', class: 'btn primario', onclick: fechar }, 'Continuar no app'), confirmar));
+  } });
 }
 
 // ------------------------------------------------------------------ chave do aparelho
@@ -318,6 +338,14 @@ function contagemDecisoes() {
 
 function render() {
   if (!estado.dados) return;
+  // Links antigos e pushes continuam válidos, abrindo a categoria do alvo.
+  const pedido = estado.sub.decisoes;
+  if (estado.aba === 'decisoes' && pedido?.id) {
+    const l = pedido.tipo === 'lancamento' ? estado.dados.lancamentos?.lancamentos?.find(l => l.id === pedido.id) : null;
+    const p = pedido.tipo === 'proposta' ? estado.dados.propostas?.propostas?.find(p => p.id === pedido.id) : null;
+    estado.aba = l?.tipo === 'evento' ? 'eventos' : l?.tipo === 'thumbnail' || p?.tipo === 'thumbnail' ? 'thumbnails' : 'studio';
+    estado.sub[estado.aba] = pedido; delete estado.sub.decisoes;
+  }
   const pagina = TODAS.find(a => a.id === estado.aba) || ABAS[0];
   const abaAtiva = pagina.pai || pagina.id;
   const n = contagemDecisoes();
@@ -356,14 +384,19 @@ function render() {
           h('img', { class: 'lateral-jogo', src: 'marca/jogo.png', alt: '', width: 36, height: 36, onerror: e => e.target.remove() }),
           h('div', {}, h('strong', {}, 'Escola Brasileira'), h('small', {}, estado.usuario?.nome || '')))),
       h('main', { class: 'principal', id: 'conteudo' },
-        h('div', { class: 'barra-acompanhamento' },
+        h('header', { class: 'barra-acompanhamento' },
+          h('div', { class: 'cabecalho-marca' },
+            h('img', { class: 'logo logo-claro', src: 'marca/logo-claro.png', alt: 'Level Up', width: 96, height: 28 }),
+            h('img', { class: 'logo logo-escuro', src: 'marca/logo-escuro.png', alt: 'Level Up', width: 96, height: 28 }), h('small', {}, 'Games Up')),
+          h('div', { class: 'cabecalho-acoes' },
           h('span', { id: 'estado-sincronizacao', role: 'status' }, 'Conferindo dados…'),
-          h('button', { type: 'button', class: 'btn', onclick: async e => {
+          h('button', { type: 'button', class: 'btn-icone sinc-recarregar', 'aria-label': 'Atualizar dados', title: 'Atualizar dados', onclick: async e => {
             e.currentTarget.disabled = true;
             try { await carregar(); avisar('Dados atualizados.'); } catch (err) { avisar(err.message, true); e.currentTarget.disabled = false; }
-          } }, icone('atualizar', { tamanho: 18 }), 'Atualizar agora'),
-          h('button', { type: 'button', class: 'btn', onclick: () => irPara('avisos') }, icone('sino', { tamanho: 18 }),
-            `Avisos (${novosAvisos(listarAvisos(estado.dados), lerAvisosLidos(estado.usuario)).length})`)),
+          } }, icone('atualizar', { tamanho: 19 })),
+          h('button', { type: 'button', class: 'btn-icone cabecalho-avisos', 'aria-label': 'Ver avisos', title: 'Ver avisos', onclick: () => irPara('avisos') }, icone('sino', { tamanho: 21 }),
+            novosAvisos(listarAvisos(estado.dados), lerAvisosLidos(estado.usuario)).length
+              ? h('span', { class: 'contador' }, String(Math.min(99, novosAvisos(listarAvisos(estado.dados), lerAvisosLidos(estado.usuario)).length))) : null))),
         topo, conteudo),
       h('nav', { class: 'barra-abas', 'aria-label': 'Menu principal' }, ABAS.filter(a => PRINCIPAIS_CELULAR.includes(a.id)).map(botaoAba), menuMais)));
   if (render.mesmaTela) window.scrollTo(0, rolagem);
@@ -460,6 +493,7 @@ Object.assign(ctx, {
   render: () => { render.mesmaTela = true; render(); },
   // Extras usados por Ajustes/Início (não fazem parte do contrato mínimo, mas ficam disponíveis).
   imagemDoPacote, sair, alternarTema, temaAtual, conferirCadastro, criarChave, contagemDecisoes,
+  kitEvento: l => carregarKitEvento(l, caminho => estado.repo.lerImagemDoPacote(caminho)),
   celular: {
     instalado, ehIOS, podeInstalar: () => !!pedidoInstalacao, instalar: instalarAtalho,
     ativar: ativarNotificacoes, desativar: desativarNotificacoes, exemplo: exemploNotificacao,

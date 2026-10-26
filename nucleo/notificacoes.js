@@ -1,4 +1,4 @@
-import { chaveParaBytes } from './vapid.js?v=20261025-comunicacao3';
+import { chaveParaBytes } from './vapid.js?v=20261025-categorias4';
 
 function mesmaChave(inscricao, publica) {
   const valor = inscricao?.options?.applicationServerKey;

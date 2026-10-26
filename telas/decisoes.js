@@ -4,10 +4,10 @@
 //   2) Publicações para autorizar (lançamentos) -> card "Sua autorização" com a imagem EXATA do pacote
 //      e o código do pacote (8 primeiros caracteres do SHA-256), que precisa ser confirmado.
 // Nada expande para baixo: detalhes abrem em folha (de baixo para cima) ou modal (fundo escuro).
-import { h, icone, iconeDoTipo, abrirFolha, abrirModal, botaoCopiar, chip, vazio } from '../ui/componentes.js?v=20261025-comunicacao3';
-import { ctx } from '../ui/contexto.js?v=20261025-comunicacao3';
-import { estadoPublicacao, estadoPropostaPublicacao, horarioBrasilia } from '../nucleo/estado-publicacao.js?v=20261025-fluxo1';
-import { semanaDe } from '../nucleo/andamento.js?v=20261025-comunicacao3';
+import { h, icone, iconeDoTipo, abrirFolha, abrirModal, botaoCopiar, chip, vazio } from '../ui/componentes.js?v=20261025-categorias4';
+import { ctx } from '../ui/contexto.js?v=20261025-categorias4';
+import { estadoPublicacao, estadoPropostaPublicacao, horarioBrasilia } from '../nucleo/estado-publicacao.js?v=20261025-categorias4';
+import { semanaDe } from '../nucleo/andamento.js?v=20261025-categorias4';
 
 // ------------------------------------------------------------------ status e grupos
 const ST = {
@@ -44,7 +44,7 @@ const SUBABAS = [
   ['aberto', 'Em aberto', 'Esperando a decisão do dono.'],
   ['autorizadas', 'Autorizadas', 'Sua autorização foi registrada. Ainda falta confirmar a publicação.'],
   ['concluidas', 'Concluídas', 'Já foram para o jogo ou foram recusadas.'],
-  ['pendencias', 'Pendências', 'Bloqueadas ou devolvidas: precisam de ação antes de continuar.'],
+  ['pendencias', 'Pendências', 'Itens bloqueados, devolvidos ou com integração, horário ou confirmação pendentes.'],
   ['agendadas', 'Agendadas', 'Aprovadas e em preparo, com data prevista para ir ao jogo.'],
   ['todas', 'Todas', 'Tudo, do mais novo para o mais antigo.'],
 ];
@@ -56,15 +56,15 @@ const GRUPOS_PROPOSTA = {
   aberto: p => DECIDIVEIS.includes(p.status),
   autorizadas: p => estadoDaProposta(p).status === ST.APROVADA_PUB,
   concluidas: p => [ST.PUBLICADA, ST.REJEITADA].includes(estadoDaProposta(p).status),
-  pendencias: p => [ST.BLOQUEADA, ST.DEVOLVIDA].includes(estadoDaProposta(p).status),
+  pendencias: p => [ST.BLOQUEADA, ST.DEVOLVIDA, 'CONFIRMAÇÃO PENDENTE'].includes(estadoDaProposta(p).status),
   agendadas: p => [ST.APROVADA_DEV, ST.EM_DEV, ST.EM_TESTES, ST.AGUARDANDO_FINAL].includes(estadoDaProposta(p).status),
   todas: () => true,
 };
 const GRUPOS_LANCAMENTO = {
   aberto: l => l.status === ST.AGUARDANDO_FINAL,
   autorizadas: l => l.status === ST.APROVADA_PUB,
-  concluidas: l => l.status === ST.PUBLICADA,
-  pendencias: l => [ST.BLOQUEADA, ST.DEVOLVIDA].includes(l.status),
+  concluidas: l => fluxo(l).confirmada,
+  pendencias: l => fluxo(l).requerAtencao,
   agendadas: l => ![ST.PUBLICADA, ST.BLOQUEADA, ST.DEVOLVIDA, ST.AGUARDANDO_FINAL, ST.APROVADA_PUB].includes(l.status) && futura(l.dataAlvo),
   todas: () => true,
 };
@@ -93,7 +93,8 @@ const ehDono = () => ctx.estado?.usuario?.papel === 'proprietario';
 const dados = () => ctx.estado?.dados || {};
 const propostas = () => dados().propostas?.propostas || [];
 const lancamentos = () => dados().lancamentos?.lancamentos || [];
-const estadoDaProposta = p => estadoPropostaPublicacao(p, lancamentos(), dados().config || {});
+const configPublicacao = () => ({ ...(dados().config || {}), tarefas: dados().tarefas?.tarefas || [] });
+const estadoDaProposta = p => estadoPropostaPublicacao(p, lancamentos(), configPublicacao());
 const ehImagem = c => /\.(png|jpe?g|webp)$/i.test(String(c || ''));
 const linkSeguro = (url, texto) => (/^https:\/\//.test(url || '') ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, texto, icone('externo', { tamanho: 14 })) : h('span', {}, texto));
 
@@ -164,6 +165,63 @@ function previaEvento(l, grande = true) {
     l.eventoRoblox?.link ? h('a', { class: 'dc-link', href: l.eventoRoblox.link, target: '_blank', rel: 'noopener' }, icone('roblox', { tamanho: 16 }), 'Ver o evento no Roblox') : null);
 }
 const pacoteEhImagem = l => /^builds\/[a-z0-9-]+\.(png|jpe?g)$/i.test(l.artefato?.caminho || '');
+
+/** Kit sob demanda: ctx.kitEvento valida o hash e lê os textos do mesmo PNG.
+ * O Blob é usado diretamente no download para preservar os metadados assinados.
+ * Não cria evento, altera datas, autoriza ou grava qualquer estado.
+ */
+function botaoKitEvento(l) {
+  return ehEvento(l) ? botaoDc('Kit para criar evento', { classe: 'dc-btn-roxo dc-largo', iconeNome: 'evento', onclick: () => abrirKitEvento(l) }) : null;
+}
+
+function abrirKitEvento(l) {
+  const conteudo = h('div', { class: 'dc-kit', 'aria-live': 'polite', 'aria-busy': 'true' },
+    h('p', { role: 'status' }, 'Conferindo a capa e os textos do pacote…'));
+  let fechada = false, url = null;
+  const carregar = async () => {
+    conteudo.setAttribute('aria-busy', 'true');
+    try {
+      if (typeof ctx.kitEvento !== 'function') throw new Error('Kit indisponível');
+      const kit = await ctx.kitEvento(l);
+      if (fechada) return;
+      if (!(kit?.blob instanceof Blob) || !kit.evento || !/^[a-f0-9]{64}$/i.test(kit.sha256 || '')) throw new Error('Kit inválido');
+      const ev = kit.evento;
+      url = URL.createObjectURL(kit.blob);
+      const campo = (rotulo, valor, copiar) => h('section', { class: 'dc-kit-campo' },
+        h('h3', { class: 'dc-sub' }, rotulo),
+        h('p', { class: 'dc-kit-valor' }, valor || 'Não informado no pacote'),
+        valor ? botaoCopiar(valor, copiar) : null);
+      const inicio = horarioBrasilia(ev.inicio), fim = horarioBrasilia(ev.fim);
+      const passou = inicio && Date.parse(ev.inicio) <= Date.now();
+      conteudo.replaceChildren(
+        h('p', { class: 'dc-fraco', title: kit.sha256 }, `Versão ${l.versao ?? 'não informada'} · código ${kit.sha256.slice(0, 8)}`),
+        h('p', {}, 'Nome, subtítulo, descrição e capa conferidos no mesmo PNG do pacote. Copie cada campo para o Creator Hub.'),
+        passou ? h('div', { class: 'dc-alerta warn', role: 'alert' }, icone('alerta', { tamanho: 20 }), h('div', {}, h('strong', {}, 'O início previsto já passou. '), 'As datas originais foram mantidas. Este kit não remarca o evento nem confirma sua criação. Confira a pendência antes de concluir no Creator Hub.')) : null,
+        h('p', { class: 'dc-fraco' }, 'Use o Creator Hub para a criação assistida, conforme autorização válida desta versão. Ainda falta confirmar ID/link.'),
+        campo('Nome do evento', ev.titulo, 'Copiar nome'),
+        campo('Subtítulo', ev.subtitulo, 'Copiar subtítulo'),
+        campo('Descrição', ev.descricao, 'Copiar descrição'),
+        ev.categoria ? campo('Categoria', ev.categoria, 'Copiar categoria') : null,
+        campo('Início · horário de Brasília', inicio, 'Copiar início'),
+        campo('Fim · horário de Brasília', fim, 'Copiar fim'),
+        h('section', { class: 'dc-kit-campo' }, h('h3', { class: 'dc-sub' }, 'Capa / thumbnail do evento'),
+          moldura('dc-midia-heroi', 'evento', h('img', { src: url, alt: 'Capa exata do evento, conferida pelo hash do pacote' })),
+          h('a', { class: 'dc-btn dc-btn-claro dc-largo', href: url, download: String(kit.arquivo || 'capa-evento.png').split(/[\\/]/).pop() }, icone('imagem', { tamanho: 20 }), 'Baixar capa exata (PNG)'),
+          h('p', { class: 'dc-fraco' }, 'PNG original com metadados preservados. Esta é a capa do evento, não a thumbnail da vitrine do jogo.')),
+        h('a', { class: 'dc-btn dc-btn-roxo dc-largo', href: 'https://create.roblox.com/dashboard/creations/experiences/9508201896', target: '_blank', rel: 'noopener noreferrer' }, icone('externo', { tamanho: 20 }), 'Abrir Creator Hub'),
+        h('p', { class: 'dc-fraco' }, 'Abre a experiência Escola Brasileira. No Creator Hub, entre na área de eventos. Copiar ou baixar não cria o evento.'));
+    } catch {
+      if (fechada) return;
+      conteudo.replaceChildren(h('p', { class: 'dc-erro', role: 'alert' }, 'Não foi possível conferir o kit desta versão. Recarregue os dados do app e tente novamente. Nenhum texto ou capa foi liberado para copiar ou baixar.'),
+        botaoDc('Recarregar dados', { classe: 'dc-btn-claro dc-largo', iconeNome: 'atualizar', onclick: () => ctx.recarregar?.() }));
+    } finally {
+      if (!fechada) conteudo.setAttribute('aria-busy', 'false');
+    }
+  };
+  abrirFolha({ titulo: 'Kit para criar evento', classe: 'dc-kit-folha', conteudo,
+    aoFechar: () => { fechada = true; if (url) URL.revokeObjectURL(url); } });
+  return carregar();
+}
 
 // Categoria da proposta (regra da semana: 3 entretenimento, 2 crescimento, 1 otimização, 1 correção).
 const CATEGORIAS = { entretenimento: ['Entretenimento', 'evento', 'relevante'], crescimento: ['Crescimento', 'grafico', 'ok'], otimizacao: ['Otimização', 'raio', 'curiosidade'], correcao: ['Correção', 'martelo', 'warn'], thumbnail: ['Thumbnail', 'thumbnail', ''] };
@@ -248,14 +306,17 @@ function cardProposta(p) {
   const f = estadoDaProposta(p);
   return h('article', { class: `dc-card-proposta dc-card-lancamento${decidivel ? ' pede-voce' : ''}` },
     h('button', { type: 'button', class: 'dc-abrir-lancamento', onclick: () => abrirProposta(p.id), 'aria-label': `Abrir proposta ${p.id}: ${p.titulo}. ${f.titulo}` },
-    miniaturaProposta(p),
+    miniaturaProposta(p, 'dc-midia-lista'),
     h('div', { class: 'dc-card-corpo' },
-      h('div', { class: 'dc-card-chips' }, chip(p.id, { iconeNome: iconeDoTipo(p.tipo) }), p.ideiaId ? chip('Sua ideia', { tom: 'relevante', iconeNome: 'lampada' }) : null, chipCategoria(p), p.mudaDesign ? chip('Muda o visual', { tom: 'quente', iconeNome: 'pincel' }) : null),
-      h('h3', { class: 'dc-card-titulo' }, p.titulo),
-      h('p', { class: 'dc-card-resumo' }, curto(p.resumo || p.descricao, 110)),
-      h('div', { class: 'dc-card-pe' },
-        h('span', { class: 'dc-pe-abrir' }, decidivel && ehDono() ? 'Decidir' : 'Ver situação', icone('direita', { tamanho: 18 }))))),
-    blocoEstadoProposta(p, { compacto: true }));
+      h('h3', { class: 'dc-card-titulo', title: p.titulo }, `${p.id} · ${curto(p.titulo, 55)}`),
+      resumoEstado(f),
+      h('span', { class: 'dc-pe-abrir' }, 'Ver detalhes', icone('direita', { tamanho: 18 })))));
+}
+
+// Lista enxuta: a trilha, a explicação e as ações de autorização ficam no modal.
+function resumoEstado(f) {
+  return [h('p', { class: `dc-card-estado ${f.tom}`, title: f.titulo }, f.titulo),
+    h('p', { class: 'dc-card-proxima', title: f.acaoCurta }, f.acaoCurta)];
 }
 
 function blocoEstadoProposta(p, { compacto = false, fechar } = {}) {
@@ -291,12 +352,11 @@ function cardIdeiaPreparando(i) {
       h('p', { class: 'dc-texto-folha' }, i.texto),
       h('div', { class: 'dc-alerta' }, icone('relogio', { tamanho: 20 }), h('div', {}, 'A equipe está transformando sua ideia em proposta: imagem, o que muda e o porquê. Quando ficar pronta, ela aparece aqui para você decidir.')),
       respostas.length ? h('p', { class: 'dc-fraco' }, `Último retorno: ${respostas.at(-1).texto}`) : null) }) },
-    moldura('dc-midia-card', 'lampada', null),
+    moldura('dc-midia-lista', 'lampada', null),
     h('div', { class: 'dc-card-corpo' },
-      h('div', { class: 'dc-card-chips' }, chip('Sua ideia', { tom: 'relevante', iconeNome: 'lampada' }), chip(i.status === 'analise' ? 'Em análise' : 'Sendo preparada', { iconeNome: 'relogio' })),
-      h('h3', { class: 'dc-card-titulo' }, curto(i.titulo, 80)),
-      h('p', { class: 'dc-card-resumo' }, curto(i.texto, 110)),
-      h('div', { class: 'dc-card-pe' }, h('span', { class: 'dc-pe-data' }, icone('calendario', { tamanho: 16 }), `Enviada ${dataCurta(i.criadaEm)}`), h('span', { class: 'dc-pe-abrir' }, 'Ver', icone('direita', { tamanho: 18 })))));
+      h('h3', { class: 'dc-card-titulo', title: i.titulo }, curto(i.titulo, 55)),
+      resumoEstado({ titulo: i.status === 'analise' ? 'Ideia em análise' : 'Ideia sendo preparada', tom: 'relevante', acaoCurta: 'Equipe: preparar a proposta' }),
+      h('span', { class: 'dc-pe-abrir' }, 'Ver detalhes', icone('direita', { tamanho: 18 }))));
 }
 
 function abrirProposta(id) {
@@ -468,11 +528,13 @@ function confirmarDecisao(p, acao, fecharModal) {
 }
 
 // ------------------------------------------------------------------ lançamentos (autorização final)
-const fluxo = l => estadoPublicacao(l, dados().config || {});
+const fluxo = l => estadoPublicacao(l, configPublicacao());
 
 // Usa o filtro de proposta/semana já oferecido pelo Andamento, inclusive no celular.
 function registroEvidencia(l) {
-  const registros = (dados().andamento?.registros || []).filter(r => (l.propostaIds || []).includes(r.propostaId));
+  const registros = (dados().andamento?.registros || []).filter(r => r.lancamentoId
+    ? r.lancamentoId === l.id && (r.versaoLancamento == null || r.versaoLancamento === l.versao)
+    : !ehEvento(l) && (l.propostaIds || []).includes(r.propostaId));
   const ordenados = [...registros].sort((a, b) => String(b.em).localeCompare(String(a.em)));
   return ordenados.find(r => r.midias?.length) || ordenados[0];
 }
@@ -490,8 +552,8 @@ function blocoEvidencias(l, fechar) {
   const videos = midias.filter(m => m.tipo === 'video').length;
   const imagens = midias.filter(m => m.tipo === 'imagem').length;
   return h('section', { class: 'dc-evidencias', 'aria-label': 'Revisar evidências antes de autorizar' },
-    h('strong', {}, icone('olho', { tamanho: 20 }), 'Primeiro, veja como ficou'),
-    h('p', {}, midias.length ? `${imagens} imagem(ns) e ${videos} vídeo(s) no registro “${r.titulo}” da proposta.` : 'Ainda não há imagens ou vídeos das propostas deste pacote no Andamento. Confira os registros ou peça à equipe para anexar as evidências.'),
+    h('strong', {}, icone('olho', { tamanho: 20 }), ehEvento(l) ? 'Confira as evidências deste evento' : 'Primeiro, veja como ficou'),
+    h('p', {}, midias.length ? `${imagens} imagem(ns) e ${videos} vídeo(s) no registro “${r.titulo}”.` : ehEvento(l) ? 'Ainda não há evidências vinculadas a este evento. Os registros da atualização do jogo não confirmam a criação do evento no Roblox.' : 'Ainda não há imagens ou vídeos das propostas deste pacote no Andamento. Confira os registros ou peça à equipe para anexar as evidências.'),
     botaoAndamento(l, fechar, 'Ver imagens e vídeos'),
     h('p', { class: 'dc-fraco' }, 'Você pode revisar as evidências sem devolver o pacote. Use Devolver para ajustes quando quiser pedir uma mudança.'));
 }
@@ -543,11 +605,11 @@ function blocoCodigo(l) {
     h('div', { class: 'dc-codigo-linha' }, h('span', { class: 'dc-codigo-valor', 'aria-label': `Código ${cod.split('').join(' ')}` }, cod || '—'), cod ? botaoCopiar(cod, 'Copiar') : null),
     h('p', { class: 'dc-codigo-explica' }, l.status === ST.AGUARDANDO_FINAL
       ? 'Identifica esta versão. Copiar ou digitar o código não autoriza. Toque em Autorizar publicação e confirme em Sim, autorizar. Se o arquivo mudar, é preciso autorizar a nova versão.'
-      : l.status === ST.PUBLICADA ? 'Identificação do pacote já publicado. Nenhuma nova autorização é necessária para esta publicação.'
+      : fluxo(l).confirmada ? 'Identificação do pacote já publicado. Nenhuma nova autorização é necessária para esta publicação.'
         : 'Copiar ou digitar o código não autoriza. A situação e o próximo passo estão no topo; este código apenas identifica a versão do pacote.'));
 }
 
-function cardAutorizacao(l) {
+function cardAutorizacao(l, fecharModal) {
   const testesOk = l.testes?.resultado === 'aprovado';
   const semChave = ctx.estado?.chave?.estado !== 'registrada';
   const cod = codigoPacote(l);
@@ -571,16 +633,17 @@ function cardAutorizacao(l) {
     try { conf.value = (await navigator.clipboard.readText()).trim().slice(0, 8); } catch { conf.value = cod; }
     conf.dispatchEvent(new Event('input'));
   } });
-  autorizar.addEventListener('click', () => confirmarAutorizacao(l, coment));
-  const devolver = botaoDc('Devolver para ajustes', { classe: 'dc-btn-claro', iconeNome: 'editar', onclick: () => confirmarLancamento(l, 'devolver', coment) });
-  const bloquear = botaoDc('Bloquear', { classe: 'dc-btn-perigo', iconeNome: 'cadeado', onclick: () => confirmarLancamento(l, 'bloquear', coment) });
+  autorizar.addEventListener('click', () => confirmarAutorizacao(l, coment, fecharModal));
+  const devolver = botaoDc('Devolver para ajustes', { classe: 'dc-btn-claro', iconeNome: 'editar', onclick: () => confirmarLancamento(l, 'devolver', coment, fecharModal) });
+  const bloquear = botaoDc('Bloquear', { classe: 'dc-btn-perigo', iconeNome: 'cadeado', onclick: () => confirmarLancamento(l, 'bloquear', coment, fecharModal) });
 
   card.append(...[
     h('header', { class: 'dc-aut-topo' },
       h('div', { class: 'dc-aut-selo' }, icone('assinatura', { tamanho: 22 })),
       h('div', {}, h('div', { class: 'dc-aut-sobre' }, 'Sua autorização'), h('h3', {}, tituloLanc(l, true))),
       seloStatus(l.status)),
-    blocoEvidencias(l),
+    botaoKitEvento(l),
+    blocoEvidencias(l, fecharModal),
     blocoFluxo(l, { atalho: false, marcos: false }),
     midiaDoLancamento(l),
     h('div', { class: 'dc-aut-fatos' },
@@ -603,7 +666,7 @@ function cardAutorizacao(l) {
   return card;
 }
 
-function confirmarAutorizacao(l, coment) {
+function confirmarAutorizacao(l, coment, fecharOrigem) {
   abrirFolha({
     titulo: 'Autorizar a publicação?',
     conteudo: fechar => {
@@ -615,6 +678,7 @@ function confirmarAutorizacao(l, coment) {
         const agora = lancamentos().find(x => x.id === l.id);
         if (agora && agora.status !== antes && [ST.APROVADA_PUB, ST.PUBLICADA].includes(agora.status)) {
           fechar();
+          fecharOrigem?.();
           abrirFolha({ titulo: 'Autorização registrada', conteudo: fecharSucesso => h('div', { class: 'dc-confirma' },
             h('p', { class: 'dc-confirma-texto', role: 'status' }, 'Sua autorização foi gravada. Acompanhe a próxima etapa no Andamento.'),
             blocoFluxo(agora, { fechar: fecharSucesso })) });
@@ -624,14 +688,14 @@ function confirmarAutorizacao(l, coment) {
         h('div', { class: 'dc-confirma-icone amarelo' }, icone('foguete', { tamanho: 30 })),
         h('p', { class: 'dc-confirma-texto' }, 'Você autoriza esta versão. Depois ainda é preciso enviar e confirmar a publicação.'),
         h('p', {}, fluxo(l).modo), h('p', {}, fluxo(l).horario),
-        botaoAndamento(l, fechar, 'Ver imagens e vídeos antes de autorizar'),
+        botaoAndamento(l, () => { fechar(); fecharOrigem?.(); }, 'Ver imagens e vídeos antes de autorizar'),
         h('div', { class: 'dc-confirma-codigo' }, 'Vale só para o código ', h('strong', {}, codigoPacote(l)), '. Se o arquivo mudar, esta autorização deixa de valer sozinha.'),
         h('div', { class: 'dc-confirma-botoes' }, ok, voltar));
     },
   });
 }
 
-function confirmarLancamento(l, acao, comentOrigem) {
+function confirmarLancamento(l, acao, comentOrigem, fecharOrigem) {
   const ehDevolver = acao === 'devolver';
   abrirFolha({
     titulo: ehDevolver ? 'Devolver para ajustes' : 'Bloquear esta publicação?',
@@ -645,12 +709,12 @@ function confirmarLancamento(l, acao, comentOrigem) {
         const antes = l.status;
         await ctx.gravar('/api/lancamentos/decisao', { lancamentoId: l.id, acao, artefatoSha256: l.artefato?.sha256, comentario: campo.value }, [ok, voltar], ehDevolver ? 'Devolvido para ajustes.' : 'Publicação bloqueada.');
         const agora = lancamentos().find(x => x.id === l.id);
-        if (agora && agora.status !== antes) fechar();
+        if (agora && agora.status !== antes) { fechar(); fecharOrigem?.(); }
       });
       return h('div', { class: 'dc-confirma' },
         h('div', { class: `dc-confirma-icone ${ehDevolver ? 'amarelo' : 'vermelho'}` }, icone(ehDevolver ? 'editar' : 'cadeado', { tamanho: 30 })),
         h('p', { class: 'dc-confirma-texto' }, ehDevolver ? 'Devolver pede uma mudança no pacote. A equipe precisa ajustar, testar e reentregar como pronto; o botão Autorizar só volta depois. Você autoriza novamente.' : 'Nada é publicado. A equipe precisa de uma nova decisão sua para continuar.'),
-        ehDevolver ? [h('p', {}, 'Se você só quer ver como ficou, pode abrir as imagens e os vídeos sem devolver.'), botaoAndamento(l, fechar, 'Ver imagens e vídeos sem devolver')] : null,
+        ehDevolver ? [h('p', {}, 'Se você só quer ver como ficou, pode abrir as imagens e os vídeos sem devolver.'), botaoAndamento(l, () => { fechar(); fecharOrigem?.(); }, 'Ver imagens e vídeos sem devolver')] : null,
         h('label', { class: 'dc-rotulo' }, ehDevolver ? 'O que ajustar (obrigatório)' : 'Motivo (opcional)'), campo, erro,
         h('div', { class: 'dc-confirma-botoes' }, ok, voltar));
     },
@@ -677,37 +741,31 @@ function folhaLancamento(l) {
 
 function cardLancamentoCompacto(l) {
   const incl = (l.propostaIds || []).map(id => propostas().find(p => p.id === id)).filter(Boolean);
-  const mini = pacoteEhImagem(l) ? moldura('dc-midia-card', ehEvento(l) ? 'evento' : 'thumbnail', imagemPacote(l)) : incl[0] ? miniaturaProposta(incl[0]) : moldura('dc-midia-card', 'roblox', null);
+  const mini = pacoteEhImagem(l) ? moldura('dc-midia-lista', ehEvento(l) ? 'evento' : 'thumbnail', imagemPacote(l)) : incl[0] ? miniaturaProposta(incl[0], 'dc-midia-lista') : moldura('dc-midia-lista', 'roblox', null);
+  const f = fluxo(l);
+  const titulo = `${ehEvento(l) ? 'Evento' : l.tipo === 'thumbnail' ? 'Thumbnail' : 'Jogo'} · ${curto(ehEvento(l) ? l.evento?.titulo || 'Evento no Roblox' : incl[0]?.titulo || (l.changelog || [])[0] || l.id, 55)}`;
   return h('article', { class: 'dc-card-proposta dc-card-lancamento' },
-    h('button', { type: 'button', class: 'dc-abrir-lancamento', onclick: () => abrirLancamento(l.id), 'aria-label': `Abrir publicação ${l.id}: ${fluxo(l).titulo}` },
+    h('button', { type: 'button', class: 'dc-abrir-lancamento', onclick: () => abrirLancamento(l.id), 'aria-label': `Abrir publicação ${l.id}: ${titulo}. ${f.titulo}. ${f.acaoCurta}` },
     mini,
     h('div', { class: 'dc-card-corpo' },
-      h('div', { class: 'dc-card-chips' }, chipTipoLanc(l)),
-      h('h3', { class: 'dc-card-titulo' }, curto((l.changelog || [])[0] || l.id, 80)),
-      h('p', { class: 'dc-card-resumo' }, `${l.id} · código ${codigoPacote(l) || '—'}`),
-      h('span', { class: 'dc-pe-abrir' }, 'Ver situação e detalhes', icone('direita', { tamanho: 18 })))),
-    blocoFluxo(l, { compacto: true }));
+      h('h3', { class: 'dc-card-titulo', title: titulo }, titulo),
+      resumoEstado(f),
+      h('span', { class: 'dc-pe-abrir' }, 'Ver detalhes', icone('direita', { tamanho: 18 })))));
 }
 
 function abrirLancamento(id) {
   const l = lancamentos().find(x => x.id === id);
   if (!l) return;
-  if (l.status === ST.AGUARDANDO_FINAL) {
-    const card = document.getElementById(`lanc-${l.id}`);
-    if (card) {
-      card.scrollIntoView({ block: 'start' });
-      (document.getElementById(`dc-conf-${l.id}`) || card).focus({ preventScroll: true });
-      return;
-    }
-  }
+  if (l.status === ST.AGUARDANDO_FINAL) return abrirModal({ titulo: tituloLanc(l), classe: 'dc-modal', conteudo: fechar => cardAutorizacao(l, fechar) });
   const a = l.autorizacao?.dados;
   abrirModal({
     titulo: tituloLanc(l),
     classe: 'dc-modal',
     conteudo: fechar => h('div', { class: 'dc-detalhe' },
+      botaoKitEvento(l),
       blocoEvidencias(l, fechar), blocoFluxo(l, { fechar, atalho: false }),
       midiaDoLancamento(l),
-      h('div', { class: 'dc-card-chips' }, seloStatus(l.status), chip(l.id, { iconeNome: 'foguete' })),
+      h('div', { class: 'dc-card-chips' }, chip(fluxo(l).titulo, { tom: fluxo(l).tom, iconeNome: fluxo(l).icone }), chip(l.id, { iconeNome: 'foguete' })),
       h('div', { class: 'dc-aut-fatos' },
         h('div', { class: `dc-fato ${a ? 'ok' : ''}` }, icone('assinatura', { tamanho: 22 }), h('div', {}, h('div', { class: 'dc-fato-rot' }, 'Sua autorização'), h('strong', {}, a ? 'Registrada' : 'Sem autorização desta versão'), a ? h('div', { class: 'dc-fato-sub' }, `Validade: ${horarioBrasilia(a.expiraEm) || 'não informada'}`) : null))),
       h('section', { class: 'dc-muda' }, h('h4', { class: 'dc-sub' }, icone('raio', { tamanho: 18 }), 'O que muda'),
@@ -719,46 +777,93 @@ function abrirLancamento(id) {
 }
 
 // ------------------------------------------------------------------ tela
-export function telaDecisoes() {
+const DESTINOS = {
+  jogo: { nome: 'Roblox Studio', rota: 'studio', icone: 'roblox', descricao: 'Mudanças dentro do jogo.' },
+  evento: { nome: 'Eventos', rota: 'eventos', icone: 'evento', descricao: 'Divulgação na página do Roblox.' },
+  thumbnail: { nome: 'Thumbnails', rota: 'thumbnails', icone: 'thumbnail', descricao: 'Imagens da vitrine do jogo.' },
+};
+function categoriaDoPedido(pedido) {
+  if (pedido.tipo === 'lancamento') return lancamentos().find(l => l.id === pedido.id)?.tipo || 'jogo';
+  return propostas().find(p => p.id === pedido.id)?.tipo === 'thumbnail' ? 'thumbnail' : 'jogo';
+}
+function referenciaEvento(p) {
+  const l = [...lancamentos()].reverse().find(l => ehEvento(l) && l.propostaIds?.includes(p.id));
+  return l ? { ...fluxo(l), lancamento: l } : { titulo: DECIDIVEIS.includes(p.status) ? 'Ideia aguardando decisão no Roblox Studio' : 'Divulgação em preparo',
+    acaoCurta: DECIDIVEIS.includes(p.status) ? 'Você: decidir a ideia no Roblox Studio' : 'Equipe: preparar a entrega do evento', tom: 'relevante', status: ST.EM_DEV };
+}
+function cardReferenciaEvento(p) {
+  const f = referenciaEvento(p);
+  return h('article', { class: 'dc-card-proposta dc-card-lancamento' },
+    h('button', { type: 'button', class: 'dc-abrir-lancamento', 'aria-label': `Abrir referência do evento ${p.id}: ${p.titulo}`, onclick: () => abrirFolha({ titulo: 'Proposta vinculada ao evento', conteudo: fechar => h('div', { class: 'dc-detalhe' },
+      h('h3', { class: 'dc-detalhe-titulo' }, p.titulo),
+      h('p', {}, 'A ideia é aprovada na categoria de origem. Aqui você acompanha sua divulgação na página do Roblox; a publicação do jogo não confirma a criação do evento.'),
+      h('p', {}, f.titulo),
+      f.lancamento ? botaoDc('Ver entrega do evento', { classe: 'dc-btn-roxo', onclick: () => { fechar(); abrirLancamento(f.lancamento.id); } }) : null,
+      botaoDc('Ver proposta de origem', { classe: 'dc-btn-claro', onclick: () => { fechar(); ctx.irPara?.(p.tipo === 'thumbnail' ? 'thumbnails' : 'studio', { tipo: 'proposta', id: p.id }); } })) }) },
+      miniaturaProposta(p, 'dc-midia-lista'), h('div', { class: 'dc-card-corpo' },
+        h('h3', { class: 'dc-card-titulo', title: p.titulo }, `${p.id} · ${curto(p.titulo, 55)}`), resumoEstado(f),
+        h('span', { class: 'dc-pe-abrir' }, 'Ver detalhes', icone('direita', { tamanho: 18 })))));
+}
+
+export function telaRobloxStudio() { return telaDecisoes({ categoria: 'jogo' }); }
+export function telaEventos() { return telaDecisoes({ categoria: 'evento' }); }
+export function telaThumbnails() { return telaDecisoes({ categoria: 'thumbnail' }); }
+
+export function telaDecisoes({ categoria } = {}) {
   if (!ctx.estado?.dados) return vazio('Carregando…', 'relogio');
   const sub = ctx.estado.sub || (ctx.estado.sub = {});
-  const pedido = typeof sub.decisoes === 'object' && sub.decisoes?.id ? sub.decisoes : null;
+  const legado = typeof sub.decisoes === 'object' && sub.decisoes?.id ? sub.decisoes : null;
+  if (!categoria && legado) categoria = categoriaDoPedido(legado);
+  if (!DESTINOS[categoria]) return h('div', { class: 'tela-decisoes' },
+    h('p', { class: 'dc-fraco' }, 'Todas são propostas. Escolha onde serão aplicadas.'),
+    h('div', { class: 'dc-hub' }, Object.values(DESTINOS).map(d => h('button', { type: 'button', class: 'dc-btn dc-btn-claro dc-hub-categoria', onclick: () => ctx.irPara?.(d.rota) },
+      icone(d.icone, { tamanho: 28 }), h('span', {}, h('strong', {}, d.nome), h('small', {}, d.descricao)), icone('direita', { tamanho: 20 })))));
+  const destino = DESTINOS[categoria];
+  const pedidoRota = sub[destino.rota];
+  const pedido = pedidoRota?.id ? pedidoRota : legado && categoriaDoPedido(legado) === categoria ? legado : null;
+  const estados = sub.decisoesCategorias || (sub.decisoesCategorias = {});
+  const estado = estados[categoria] || (estados[categoria] = { area: sub.decisoesArea, filtro: typeof sub.decisoes === 'string' ? sub.decisoes : null });
   if (pedido) {
-    sub.decisoesArea = pedido.tipo === 'proposta' ? 'ideias' : 'publicacoes';
-    sub.decisoes = pedido.tipo === 'lancamento' && lancamentos().some(l => l.id === pedido.id && l.status === ST.AGUARDANDO_FINAL) ? 'aberto' : 'todas';
+    estado.area = pedido.tipo === 'proposta' ? 'ideias' : 'publicacoes';
+    estado.filtro = pedido.tipo === 'lancamento' && lancamentos().some(l => l.id === pedido.id && l.status === ST.AGUARDANDO_FINAL) ? 'aberto' : 'todas';
+    if (pedido === legado) sub.decisoes = estado.filtro;
+    if (pedido === pedidoRota) sub[destino.rota] = null;
   }
-  const todasP = [...propostas()].reverse();
-  const todasL = [...lancamentos()].reverse();
-  const ideiasPendentes = todasP.filter(p => DECIDIVEIS.includes(p.status) && !p.bloqueio).length;
+  // O tipo evento de P-006 é gameplay. Só o lançamento tipo evento é divulgação.
+  const todasL = [...lancamentos()].filter(l => (l.tipo || 'jogo') === categoria).reverse();
+  const todasP = [...propostas()].filter(p => categoria === 'thumbnail' ? p.tipo === 'thumbnail' : categoria === 'jogo' ? p.tipo !== 'thumbnail'
+    : p.anunciarEmEvento || todasL.some(l => l.propostaIds?.includes(p.id))).reverse();
+  const ideiasPendentes = todasP.filter(p => categoria === 'evento' ? !referenciaEvento(p).lancamento : DECIDIVEIS.includes(p.status) && !p.bloqueio).length;
   const pubPendentes = todasL.filter(l => l.status === ST.AGUARDANDO_FINAL).length;
 
   // Área padrão: se há publicação esperando, ela vem primeiro (é a etapa mais importante).
-  const area = sub.decisoesArea || (todasL.some(l => [ST.AGUARDANDO_FINAL, ST.APROVADA_PUB, ST.DEVOLVIDA, ST.BLOQUEADA].includes(l.status)) ? 'publicacoes' : 'ideias');
+  const area = estado.area || (todasL.length ? 'publicacoes' : 'ideias');
   const filtroInicial = area === 'publicacoes' && !pubPendentes ? 'todas' : 'aberto';
-  const filtro = sub.decisoes && SUBABAS.some(s => s[0] === sub.decisoes) ? sub.decisoes : filtroInicial;
-  const escolher = (chave, valor) => { sub[chave] = valor; ctx.render?.(); };
+  const filtro = estado.filtro && SUBABAS.some(s => s[0] === estado.filtro) ? estado.filtro : filtroInicial;
+  estado.area = area;
+  estado.filtro = filtro;
+  const escolher = (_chave, valor) => { estado.filtro = valor; ctx.render?.(); };
 
   const botaoArea = (id, iconeNome, n, rotulo, explica) => h('button', {
-    type: 'button', class: `dc-area${area === id ? ' ativa' : ''}${n ? ' tem' : ''}`, 'aria-pressed': String(area === id),
-    onclick: () => { sub.decisoesArea = id; sub.decisoes = n ? 'aberto' : 'todas'; ctx.render?.(); },
-  },
-  h('span', { class: 'dc-area-icone' }, icone(iconeNome, { tamanho: 26 })),
-  h('span', { class: 'dc-area-num' }, String(n)),
-  h('span', { class: 'dc-area-rotulo' }, rotulo),
-  h('span', { class: 'dc-area-explica' }, explica),
-  h('span', { class: 'dc-area-ir' }, n ? 'Abrir' : 'Ver', icone('direita', { tamanho: 16 })));
+    type: 'button', class: 'dc-filtro', 'aria-pressed': String(area === id),
+    onclick: () => { estado.area = id; estado.filtro = n ? 'aberto' : 'todas'; ctx.render?.(); },
+  }, icone(iconeNome, { tamanho: 18 }), rotulo, h('span', { class: 'dc-filtro-n' }, String(n)));
 
-  const grupos = area === 'ideias' ? GRUPOS_PROPOSTA : GRUPOS_LANCAMENTO;
+  const gruposEvento = { aberto: p => !referenciaEvento(p).lancamento, autorizadas: p => referenciaEvento(p).status === ST.APROVADA_PUB,
+    concluidas: p => !!referenciaEvento(p).confirmada, pendencias: p => [ST.BLOQUEADA, ST.DEVOLVIDA, 'CONFIRMAÇÃO PENDENTE'].includes(referenciaEvento(p).status),
+    agendadas: p => !referenciaEvento(p).lancamento, todas: () => true };
+  const grupos = area === 'ideias' ? categoria === 'evento' ? gruposEvento : GRUPOS_PROPOSTA : GRUPOS_LANCAMENTO;
   const base = area === 'ideias' ? todasP : todasL;
   const contagem = Object.fromEntries(SUBABAS.map(([id]) => [id, base.filter(grupos[id]).length]));
   const lista = base.filter(grupos[filtro]);
   const explicacao = SUBABAS.find(s => s[0] === filtro)[2];
 
   // Ideias do dono ainda sem proposta aparecem já em "Em aberto", antes das propostas.
-  const preparando = area === 'ideias' && filtro === 'aberto' ? (dados().ideias?.itens || []).filter(i => ['nova', 'analise'].includes(i.status)).reverse() : [];
+  const prepararCard = categoria === 'evento' ? cardReferenciaEvento : cardProposta;
+  const preparando = categoria !== 'evento' && area === 'ideias' && filtro === 'aberto' ? (dados().ideias?.itens || []).filter(i => ['nova', 'analise'].includes(i.status) && (i.tipo === 'thumbnail' ? 'thumbnail' : 'jogo') === categoria).reverse() : [];
   let conteudo;
   if (preparando.length) {
-    conteudo = h('div', { class: 'dc-grade-cards' }, preparando.map(cardIdeiaPreparando), lista.map(cardProposta));
+    conteudo = h('div', { class: 'dc-grade-cards' }, preparando.map(cardIdeiaPreparando), lista.map(prepararCard));
   } else if (!lista.length) {
     const msgs = {
       ideias: { aberto: 'Nenhuma ideia esperando você. Novas propostas chegam toda terça.' },
@@ -766,13 +871,9 @@ export function telaDecisoes() {
     };
     conteudo = vazio(msgs[area][filtro] || 'Nada por aqui.', filtro === 'aberto' ? 'ok' : 'calendario');
   } else if (area === 'ideias') {
-    conteudo = h('div', { class: 'dc-grade-cards' }, lista.map(cardProposta));
+    conteudo = h('div', { class: 'dc-grade-cards' }, lista.map(prepararCard));
   } else {
-    const aguardando = lista.filter(l => l.status === ST.AGUARDANDO_FINAL);
-    const outros = lista.filter(l => l.status !== ST.AGUARDANDO_FINAL);
-    conteudo = h('div', { class: 'dc-pilha' },
-      aguardando.map(cardAutorizacao),
-      outros.length ? h('div', { class: 'dc-grade-cards' }, outros.map(cardLancamentoCompacto)) : null);
+    conteudo = h('div', { class: 'dc-grade-cards' }, lista.map(cardLancamentoCompacto));
   }
 
   // Meta da semana: no mínimo 7 propostas (3 entretenimento, 2 crescimento, 1 otimização, 1 correção).
@@ -781,7 +882,7 @@ export function telaDecisoes() {
   const daSemana = todasP.filter(p => String(p.criadaEm || '') >= limite);
   const feitas = Object.fromEntries(Object.keys(META).map(c => [c, daSemana.filter(p => p.categoria === c).length]));
   const totalFeitas = Object.keys(META).reduce((n, c) => n + Math.min(META[c], feitas[c]), 0);
-  const blocoSemana = area !== 'ideias' ? null : h('div', { class: 'dc-meta-semana' },
+  const blocoSemana = categoria !== 'jogo' || area !== 'ideias' ? null : h('div', { class: 'dc-meta-semana' },
     h('div', { class: 'dc-meta-topo' }, icone('calendario', { tamanho: 18 }), h('strong', {}, `Propostas da semana: ${totalFeitas} de 7`),
       h('span', { class: 'dc-fraco' }, totalFeitas >= 7 ? 'semana completa' : 'chegam toda segunda e terça')),
     h('div', { class: 'dc-card-chips' }, Object.entries(META).map(([c, meta]) => {
@@ -790,9 +891,10 @@ export function telaDecisoes() {
     })));
 
   const tela = h('div', { class: 'tela-decisoes' },
-    h('div', { class: 'dc-areas' },
-      botaoArea('ideias', 'lampada', ideiasPendentes, 'Ideias para aprovar', 'Libere a equipe para preparar'),
-      botaoArea('publicacoes', 'foguete', pubPendentes, 'Publicações para autorizar', 'Libere o que vai para o jogo')),
+    h('header', { class: 'dc-categoria', 'aria-label': destino.nome }, h('p', { class: 'dc-fraco' }, destino.descricao)),
+    h('div', { class: 'dc-etapas', role: 'group', 'aria-label': `Etapa das propostas de ${destino.nome}` },
+      botaoArea('ideias', 'lampada', ideiasPendentes, categoria === 'evento' ? 'Propostas vinculadas' : 'Aprovar ideia'),
+      botaoArea('publicacoes', 'foguete', pubPendentes, 'Autorizar entrega')),
     blocoSemana,
     h('div', { class: 'dc-filtros', role: 'group', 'aria-label': 'Filtrar por situação' },
       SUBABAS.map(([id, nome]) => h('button', { type: 'button', class: 'dc-filtro', 'aria-pressed': String(filtro === id), onclick: () => escolher('decisoes', id) },

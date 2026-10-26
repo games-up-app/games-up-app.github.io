@@ -32,6 +32,8 @@
   --barra-h: 64px;
   --topo-seguro: env(safe-area-inset-top, 0px);
   --baixo-seguro: env(safe-area-inset-bottom, 0px);
+  --esquerda-segura: env(safe-area-inset-left, 0px);
+  --direita-segura: env(safe-area-inset-right, 0px);
   --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   /* Tons das miniaturas e ícones (fundo suave + cor do traço). */
   --t-roxo-bg: #efe4fb; --t-roxo: #6700bf;
@@ -129,7 +131,7 @@ label { display: block; font-weight: 650; font-size: .92rem; margin: 10px 0 6px;
 
 /* ------------------------------------------------------------------ casca: lateral (computador) e barra de abas (celular) */
 .app { min-height: 100vh; }
-.principal { padding: calc(14px + var(--topo-seguro)) 16px calc(var(--barra-h) + 28px + var(--baixo-seguro)); max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+.principal { padding: calc(14px + var(--topo-seguro)) max(16px, var(--direita-segura)) calc(var(--barra-h) + 28px + var(--baixo-seguro)) max(16px, var(--esquerda-segura)); max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 .lateral { display: none; }
 .barra-abas { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: grid; grid-template-columns: repeat(5, 1fr); background: color-mix(in srgb, var(--surface) 92%, transparent); -webkit-backdrop-filter: saturate(1.6) blur(16px); backdrop-filter: saturate(1.6) blur(16px); border-top: 1px solid var(--border); padding: 6px 4px calc(6px + var(--baixo-seguro)); }
 .aba { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; background: none; color: var(--muted); cursor: pointer; min-height: 52px; padding: 2px 0; min-width: 0; border-radius: 14px; }
@@ -153,7 +155,7 @@ label { display: block; font-weight: 650; font-size: .92rem; margin: 10px 0 6px;
   .app { display: block; padding-left: 252px; }
   .barra-abas { display: none; }
   .lateral { display: flex; flex-direction: column; gap: 18px; position: fixed; left: 0; top: 0; bottom: 0; width: 252px; height: 100vh; height: 100dvh; overflow-y: auto; z-index: 20; background: #1b1b1a; color: #f2f2f0; padding: 24px 16px; }
-  .principal { padding: 28px 32px 48px; width: 100%; }
+  .principal { padding: calc(28px + var(--topo-seguro)) max(32px, var(--direita-segura)) calc(48px + var(--baixo-seguro)) 32px; width: 100%; }
   .marca { display: flex; flex-direction: column; gap: 4px; padding: 0 8px 8px; }
   .marca small { color: #fdd001; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; font-size: .72rem; }
   .logo { width: 150px; height: auto; }
@@ -559,9 +561,30 @@ button.atividade { cursor: pointer; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
-.barra-acompanhamento { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; }
-.barra-acompanhamento > span { color: var(--text-2); font-size: .8rem; flex: 1 1 200px; }
-.barra-acompanhamento .btn { min-height: 44px; }
-.barra-acompanhamento .bad { color: var(--bad); }
+/* Cabeçalho compacto: a informação completa do status continua no texto vivo e no title. */
+.barra-acompanhamento { display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; gap: 12px; min-width: 0; min-height: 56px; margin: 0; padding: 0 0 11px; border-bottom: 1px solid var(--border); }
+.cabecalho-marca { display: flex; align-items: center; gap: 10px; min-width: 0; text-decoration: none; color: var(--text); }
+.cabecalho-marca img { display: block; flex: none; width: 88px; height: auto; max-height: 30px; object-fit: contain; }
+.cabecalho-marca .logo-escuro { display: none; }
+.cabecalho-marca small { color: var(--muted); font-size: .68rem; line-height: 1.2; font-weight: 750; letter-spacing: .06em; white-space: nowrap; }
+:root[data-theme="dark"] .cabecalho-marca .logo-claro { display: none; }
+:root[data-theme="dark"] .cabecalho-marca .logo-escuro { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .cabecalho-marca .logo-claro { display: none; }
+  :root:not([data-theme="light"]) .cabecalho-marca .logo-escuro { display: block; }
+}
+.cabecalho-acoes { display: flex; align-items: center; flex: none; gap: 6px; }
+.barra-acompanhamento #estado-sincronizacao { display: inline-grid; place-items: center; flex: none; width: 16px; height: 28px; padding: 0; margin: 0 2px 0 0; font-size: 0; color: var(--ok); }
+.barra-acompanhamento #estado-sincronizacao::before { content: ''; display: block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.barra-acompanhamento .btn-icone { position: relative; width: 44px; height: 44px; min-height: 44px; padding: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text-2); }
+.barra-acompanhamento .btn-icone:active { background: var(--brand-soft); color: var(--brand-text); }
+.barra-acompanhamento .btn-icone:disabled { opacity: .55; cursor: wait; }
+.cabecalho-avisos .contador { top: -4px; right: -4px; width: auto; min-width: 20px; max-width: 36px; height: 20px; padding: 0 4px; font-size: .65rem; }
+.barra-acompanhamento.sinc-com-falha #estado-sincronizacao,
+.barra-acompanhamento #estado-sincronizacao.bad { color: var(--bad); }
+.barra-acompanhamento.sinc-com-falha .sinc-recarregar { color: var(--bad); border-color: var(--bad); background: var(--bad-soft); }
+@media (hover: hover) {
+  .barra-acompanhamento .btn-icone:hover { background: var(--surface-2); }
+}
 .dados-novos { position: fixed; top: max(8px, env(safe-area-inset-top)); left: 12px; right: 12px; z-index: 10000; padding: 14px; border: 2px solid var(--brand-text); border-radius: 16px; background: var(--surface); color: var(--text); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; box-shadow: var(--sombra); }
 .dados-novos strong { flex: 1 1 240px; }

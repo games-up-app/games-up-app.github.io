@@ -7,23 +7,50 @@ html.sem-rolagem, html.sem-rolagem body { overflow: hidden; }
 .camada-fundo.saindo { opacity: 0; }
 
 .folha, .modal { position: fixed; z-index: 91; background: var(--surface); color: var(--text); display: flex; flex-direction: column; box-shadow: 0 -8px 40px rgba(0,0,0,.35); }
-.folha { left: 0; right: 0; bottom: 0; max-height: 88vh; border-radius: 22px 22px 0 0; transform: translateY(100%); transition: transform .24s cubic-bezier(.2,.8,.2,1); padding-bottom: env(safe-area-inset-bottom); touch-action: none; }
+.folha { left: 0; right: 0; bottom: 0; max-width: 100%; max-height: min(88vh, calc(100vh - var(--topo-seguro) - 12px)); max-height: min(88dvh, calc(100dvh - var(--topo-seguro) - 12px)); border-radius: 22px 22px 0 0; transform: translateY(100%); transition: transform .24s cubic-bezier(.2,.8,.2,1); padding-bottom: var(--baixo-seguro); touch-action: pan-y; }
 .folha.aberto { transform: translateY(0); }
 .folha.saindo { transform: translateY(100%); }
 .folha-alca { width: 44px; height: 5px; border-radius: 3px; background: var(--border); margin: 10px auto 2px; flex: none; }
-.modal { left: 50%; top: 50%; width: min(640px, calc(100vw - 24px)); max-height: calc(100vh - 48px); border-radius: 20px; transform: translate(-50%, -46%) scale(.97); opacity: 0; transition: transform .22s ease, opacity .22s ease; }
+.modal { left: 50%; top: calc(50% + (var(--topo-seguro) - var(--baixo-seguro)) / 2); width: min(640px, calc(100% - max(12px, var(--esquerda-segura)) - max(12px, var(--direita-segura)))); max-height: calc(100vh - var(--topo-seguro) - var(--baixo-seguro) - 48px); max-height: calc(100dvh - var(--topo-seguro) - var(--baixo-seguro) - 48px); border-radius: 20px; transform: translate(-50%, -46%) scale(.97); opacity: 0; transition: transform .22s ease, opacity .22s ease; }
 .modal.aberto { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 .modal.saindo { opacity: 0; transform: translate(-50%, -46%) scale(.97); }
 @media (max-width: 700px) {
-  .modal { left: 8px; right: 8px; top: auto; bottom: 8px; width: auto; max-height: 92vh; transform: translateY(20px); border-radius: 20px; padding-bottom: env(safe-area-inset-bottom); }
+  .modal { left: max(8px, var(--esquerda-segura)); right: max(8px, var(--direita-segura)); top: auto; bottom: 8px; width: auto; max-height: min(92vh, calc(100vh - var(--topo-seguro) - 20px)); max-height: min(92dvh, calc(100dvh - var(--topo-seguro) - 20px)); transform: translateY(20px); border-radius: 20px; padding-bottom: var(--baixo-seguro); }
   .modal.aberto { transform: translateY(0); }
   .modal.saindo { transform: translateY(20px); }
 }
-.camada-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px 8px; flex: none; }
-.camada-topo h2 { margin: 0; font-size: 1.15rem; }
-.camada-x { border: 0; background: var(--surface-2); color: var(--text); width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; flex: none; }
-.camada-corpo { overflow-y: auto; overscroll-behavior: contain; padding: 4px 16px 16px; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
-.camada-rodape { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; flex: none; }
+.camada-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px max(16px, var(--direita-segura)) 8px max(16px, var(--esquerda-segura)); flex: none; touch-action: none; }
+.camada-topo h2 { min-width: 0; margin: 0; font-size: 1.15rem; }
+.folha-alca { touch-action: none; }
+.camada-x { border: 0; background: var(--surface-2); color: var(--text); width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; flex: none; }
+.camada-corpo { flex: 1 1 auto; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 4px max(16px, var(--direita-segura)) 16px max(16px, var(--esquerda-segura)); touch-action: pan-y; -webkit-overflow-scrolling: touch; }
+.camada-rodape { padding: 12px max(16px, var(--direita-segura)) 12px max(16px, var(--esquerda-segura)); border-top: 1px solid var(--border); display: flex; gap: 8px; flex-wrap: wrap; flex: none; }
+
+/* Mais deixa a navegação inferior visível; o corpo rola mesmo em paisagem.
+   Escopo explícito prevalece sobre as regras legadas do menu em ideias.css. */
+.folha.folha-mais { bottom: calc(var(--barra-h) + var(--baixo-seguro)); padding-bottom: 0; max-height: calc(100vh - var(--barra-h) - var(--baixo-seguro) - var(--topo-seguro) - 12px); max-height: calc(100dvh - var(--barra-h) - var(--baixo-seguro) - var(--topo-seguro) - 12px); }
+.folha-mais-fundo, .camada-fundo:has(+ .folha-mais) { bottom: calc(var(--barra-h) + var(--baixo-seguro)); }
+.folha-mais .menu-mais { display: flex; flex-direction: column; gap: 12px; min-width: 0; width: 100%; }
+.menu-mais button { font: inherit; cursor: pointer; }
+.menu-mais .mais-perfil { display: flex; align-items: center; gap: 12px; min-width: 0; width: 100%; min-height: 70px; padding: 12px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface-2); text-align: left; }
+.menu-mais .mais-avatar { display: grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 14px; background: var(--brand-soft); color: var(--brand-text); font-weight: 800; font-size: 1rem; }
+.mais-perfil > span:not(.mais-avatar) { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 2px; }
+.mais-perfil strong { line-height: 1.25; overflow-wrap: anywhere; }
+.menu-mais .mais-perfil small { color: var(--muted); font-size: .76rem; margin: 0; }
+.mais-perfil > .icone { color: var(--muted); }
+.menu-mais .mais-grade { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; min-width: 0; }
+.menu-mais .mais-atalho { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-width: 0; min-height: 80px; width: 100%; padding: 12px 4px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); color: var(--text); text-align: center; }
+.mais-atalho .icone { color: var(--brand-text); }
+.mais-atalho strong { max-width: 100%; font-size: .8rem; font-weight: 650; line-height: 1.25; overflow-wrap: anywhere; }
+.menu-mais .mais-linha { display: flex; align-items: center; gap: 12px; min-height: 48px; min-width: 0; width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text-2); text-align: left; font-weight: 600; }
+.mais-linha .icone { color: var(--muted); }
+.menu-mais .mais-sair, .mais-sair .icone { color: var(--bad); }
+.menu-mais button:active { background: var(--brand-soft); }
+@media (hover: hover) { .menu-mais button:hover { background: var(--surface-2); } }
+@media (min-width: 900px) {
+  .folha.folha-mais { bottom: 24px; border-radius: 22px; max-height: calc(100vh - var(--topo-seguro) - var(--baixo-seguro) - 48px); max-height: calc(100dvh - var(--topo-seguro) - var(--baixo-seguro) - 48px); padding-bottom: var(--baixo-seguro); }
+  .folha-mais-fundo, .camada-fundo:has(+ .folha-mais) { bottom: 0; }
+}
 
 .linha-interruptor { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; }
 .linha-rotulo { font-weight: 600; }

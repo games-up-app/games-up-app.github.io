@@ -109,13 +109,17 @@ function travarRolagem(travar) { document.documentElement.classList.toggle('sem-
 
 function camada(tipo, { titulo, conteudo, rodape = null, aoFechar = null, classe = '' }) {
   const fundo = h('div', { class: `camada-fundo ${tipo}-fundo`, 'aria-hidden': 'true' });
+  let fechada = false, limparArraste = () => {};
+  const focoAnterior = document.activeElement;
   const fechar = () => {
-    if (!caixa.isConnected) return;
+    if (fechada || !caixa.isConnected) return;
+    fechada = true; limparArraste();
     caixa.classList.add('saindo'); fundo.classList.add('saindo');
     setTimeout(() => { caixa.remove(); fundo.remove(); window.dispatchEvent(new CustomEvent('gamesup:camadafechada')); }, 220);
     const i = pilha.indexOf(fechar); if (i >= 0) pilha.splice(i, 1);
     if (!pilha.length) travarRolagem(false);
     aoFechar?.();
+    if (!pilha.length && focoAnterior?.isConnected) focoAnterior.focus?.({ preventScroll: true });
   };
   const botaoX = h('button', { class: 'camada-x', 'aria-label': 'Fechar', onclick: fechar }, icone('fechar', { tamanho: 22 }));
   const corpo = h('div', { class: 'camada-corpo' }, typeof conteudo === 'function' ? conteudo(fechar) : conteudo);
@@ -126,33 +130,42 @@ function camada(tipo, { titulo, conteudo, rodape = null, aoFechar = null, classe
     rodape ? h('footer', { class: 'camada-rodape' }, typeof rodape === 'function' ? rodape(fechar) : rodape) : null);
   fundo.addEventListener('click', fechar);
   document.body.append(fundo, caixa);
+  const nivel = 90 + pilha.length * 2;
+  fundo.style.zIndex = nivel; caixa.style.zIndex = nivel + 1;
   requestAnimationFrame(() => { fundo.classList.add('aberto'); caixa.classList.add('aberto'); });
   pilha.push(fechar); travarRolagem(true);
   botaoX.focus({ preventScroll: true });
-  if (tipo === 'folha') arrastarParaFechar(caixa, corpo, fechar);
+  if (tipo === 'folha') limparArraste = arrastarParaFechar(caixa, corpo, fechar);
   return { fechar, corpo, caixa };
 }
 
 /** Arrastar para baixo fecha a folha (só quando o conteúdo está no topo). */
 function arrastarParaFechar(caixa, corpo, fechar) {
   let y0 = null, dy = 0;
-  caixa.addEventListener('pointerdown', e => {
+  const pegar = e => {
     if (e.target.closest('button, a, input, textarea, select, label')) return;
-    if (corpo.scrollTop > 0 && !e.target.closest('.folha-alca, .camada-topo')) return;
+    // O corpo pertence à rolagem; só a alça/cabeçalho inicia o gesto de fechar.
+    if (!e.target.closest('.folha-alca, .camada-topo')) return;
     y0 = e.clientY; dy = 0; caixa.style.transition = 'none';
-  });
-  window.addEventListener('pointermove', e => {
+  };
+  const mover = e => {
     if (y0 == null) return;
     dy = Math.max(0, e.clientY - y0);
     caixa.style.transform = `translateY(${dy}px)`;
-  });
+  };
   const soltar = () => {
     if (y0 == null) return;
     y0 = null; caixa.style.transition = ''; caixa.style.transform = '';
     if (dy > 90) fechar();
   };
+  caixa.addEventListener('pointerdown', pegar);
+  window.addEventListener('pointermove', mover);
   window.addEventListener('pointerup', soltar);
   window.addEventListener('pointercancel', soltar);
+  return () => {
+    caixa.removeEventListener('pointerdown', pegar); window.removeEventListener('pointermove', mover);
+    window.removeEventListener('pointerup', soltar); window.removeEventListener('pointercancel', soltar);
+  };
 }
 
 /** Painel que sobe de baixo. conteudo pode ser um nó ou uma função (fechar) => nó. */

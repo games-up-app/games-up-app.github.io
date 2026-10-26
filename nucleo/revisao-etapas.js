@@ -1,5 +1,5 @@
 // Aceite de etapas do desenvolvimento. Nunca altera propostas, pacotes ou assinaturas.
-import { ErroRegra, limparTexto } from './regras.js?v=20261025-comunicacao3';
+import { ErroRegra, limparTexto } from './regras.js?v=20261025-categorias4';
 
 export function revisaoDaEtapa(andamento, registro, agora = Date.now()) {
   const politica = andamento?.politicaRevisao;
