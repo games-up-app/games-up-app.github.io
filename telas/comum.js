@@ -1,7 +1,7 @@
 // Peças compartilhadas pelas telas Início, Ajustes, Pesquisa e Tarefas.
 // Tudo com h()/s() (sem innerHTML) e ícones próprios (sem emojis).
-import { h, s, icone, abrirFolha, chip } from '../ui/componentes.js?v=20261026-automacao1';
-import { ctx } from '../ui/contexto.js?v=20261026-automacao1';
+import { h, s, icone, abrirFolha, chip } from '../ui/componentes.js?v=20261026-agenda2';
+import { ctx } from '../ui/contexto.js?v=20261026-agenda2';
 
 export const FUSO = 'America/Sao_Paulo';
 export const num = x => (x == null || !Number.isFinite(Number(x)) ? '—' : Number(x).toLocaleString('pt-BR'));

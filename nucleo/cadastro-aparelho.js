@@ -1,6 +1,6 @@
 // Pedido não é autorização. A confiança só vem do registro público publicado pelo PC.
-import { assinarObjeto } from './assinatura.js?v=20261026-automacao1';
-import { canonico } from './canonico.js?v=20261026-automacao1';
+import { assinarObjeto } from './assinatura.js?v=20261026-agenda2';
+import { canonico } from './canonico.js?v=20261026-agenda2';
 
 export const REPO_CADASTRO = 'games-up-app/Automatizar-Escola-Brasileira';
 // Pedidos feitos antes da mudança para a organização continuam válidos.

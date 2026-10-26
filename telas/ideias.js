@@ -1,8 +1,8 @@
 // Caixa de ideias do proprietário: enviar pelo celular e acompanhar análise e propostas vinculadas.
-import { h, icone, chip, abrirFolha } from '../ui/componentes.js?v=20261026-automacao1';
-import { ctx } from '../ui/contexto.js?v=20261026-automacao1';
-import { ASSUNTOS_IDEIA, STATUS_IDEIA, validarIdeia } from '../nucleo/ideias.js?v=20261026-automacao1';
-import { dataBR } from './comum.js?v=20261026-automacao1';
+import { h, icone, chip, abrirFolha } from '../ui/componentes.js?v=20261026-agenda2';
+import { ctx } from '../ui/contexto.js?v=20261026-agenda2';
+import { ASSUNTOS_IDEIA, STATUS_IDEIA, validarIdeia } from '../nucleo/ideias.js?v=20261026-agenda2';
+import { dataBR } from './comum.js?v=20261026-agenda2';
 
 function abrirIdeia(i) {
   abrirFolha({ titulo: i.titulo, conteudo: h('div', { class: 'ideia-detalhe' },

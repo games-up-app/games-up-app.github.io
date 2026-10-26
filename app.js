@@ -4,27 +4,27 @@
 // A publicação no jogo exige a assinatura feita pela chave deste aparelho (ver nucleo/).
 // Este arquivo cuida de: entrar, carregar os dados, barra de abas, notificações e o objeto ctx.
 // Cada tela fica em painel/telas/*.js e só usa o ctx.
-import { CONFIG } from './config.js?v=20261026-automacao1';
-import { RepoGitHub } from './nucleo/github.js?v=20261026-automacao1';
-import { criarApi } from './nucleo/api.js?v=20261026-automacao1';
-import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js?v=20261026-automacao1';
-import { chavePublicaVapid } from './nucleo/vapid.js?v=20261026-automacao1';
-import { ativarNoAparelho, diagnosticarNotificacoes } from './nucleo/notificacoes.js?v=20261026-automacao1';
-import { criarSincronizacao } from './nucleo/sincronizacao.js?v=20261026-automacao1';
-import { estadoConfirmacaoSaida } from './nucleo/confirmacao-saida.js?v=20261026-automacao1';
-import { carregarKitEvento } from './nucleo/kit-evento.js?v=20261026-automacao1';
-import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js?v=20261026-automacao1';
-import { ctx } from './ui/contexto.js?v=20261026-automacao1';
-import { telaInicio } from './telas/inicio.js?v=20261026-automacao1';
-import { telaDecisoes, telaRobloxStudio, telaEventos, telaThumbnails } from './telas/decisoes.js?v=20261026-automacao1';
-import { telaNumeros } from './telas/numeros.js?v=20261026-automacao1';
-import { telaPesquisa } from './telas/pesquisa.js?v=20261026-automacao1';
-import { telaAjustes } from './telas/ajustes.js?v=20261026-automacao1';
-import { telaTarefas } from './telas/tarefas.js?v=20261026-automacao1';
-import { telaAndamento } from './telas/andamento.js?v=20261026-automacao1';
-import { telaIdeias } from './telas/ideias.js?v=20261026-automacao1';
-import { telaAvisos } from './telas/avisos.js?v=20261026-automacao1';
-import { listarAvisos, novosAvisos, lerAvisosLidos } from './nucleo/central-avisos.js?v=20261026-automacao1';
+import { CONFIG } from './config.js?v=20261026-agenda2';
+import { RepoGitHub } from './nucleo/github.js?v=20261026-agenda2';
+import { criarApi } from './nucleo/api.js?v=20261026-agenda2';
+import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js?v=20261026-agenda2';
+import { chavePublicaVapid } from './nucleo/vapid.js?v=20261026-agenda2';
+import { ativarNoAparelho, diagnosticarNotificacoes } from './nucleo/notificacoes.js?v=20261026-agenda2';
+import { criarSincronizacao } from './nucleo/sincronizacao.js?v=20261026-agenda2';
+import { estadoConfirmacaoSaida } from './nucleo/confirmacao-saida.js?v=20261026-agenda2';
+import { carregarKitEvento } from './nucleo/kit-evento.js?v=20261026-agenda2';
+import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js?v=20261026-agenda2';
+import { ctx } from './ui/contexto.js?v=20261026-agenda2';
+import { telaInicio } from './telas/inicio.js?v=20261026-agenda2';
+import { telaDecisoes, telaRobloxStudio, telaEventos, telaThumbnails } from './telas/decisoes.js?v=20261026-agenda2';
+import { telaNumeros } from './telas/numeros.js?v=20261026-agenda2';
+import { telaPesquisa } from './telas/pesquisa.js?v=20261026-agenda2';
+import { telaAjustes } from './telas/ajustes.js?v=20261026-agenda2';
+import { telaTarefas } from './telas/tarefas.js?v=20261026-agenda2';
+import { telaAndamento } from './telas/andamento.js?v=20261026-agenda2';
+import { telaIdeias } from './telas/ideias.js?v=20261026-agenda2';
+import { telaAvisos } from './telas/avisos.js?v=20261026-agenda2';
+import { listarAvisos, novosAvisos, lerAvisosLidos } from './nucleo/central-avisos.js?v=20261026-agenda2';
 
 const estado = { usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null, pushAtivo: null };
 // Os dados ficam na organização games-up-app: o token precisa ter ela como "Resource owner".
@@ -189,8 +189,9 @@ async function carregar() {
 // o texto digitado e a reprodução de mídia são preservados.
 let telaPendente = false;
 function temEdicao() {
-  return ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) ||
-    [...document.querySelectorAll('textarea, input:not([type=checkbox]):not([type=radio])')].some(e => e.value !== e.defaultValue);
+  const editavel = el => el && !el.closest('.saindo') && !el.disabled;
+  return editavel(document.activeElement) && ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName) ||
+    [...document.querySelectorAll('textarea, input:not([type=checkbox]):not([type=radio])')].some(e => editavel(e) && e.value !== e.defaultValue);
 }
 async function shaDados() {
   const r = estado.repo;

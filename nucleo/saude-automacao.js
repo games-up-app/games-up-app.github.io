@@ -1,6 +1,6 @@
 // Saúde informativa do painel: deriva evidências e prazos, sem rede, jobs ou gravações.
 // Cron de GitHub Actions é UTC; os compromissos abaixo usam Brasília (UTC−3).
-import { avaliarPresenca } from './presenca.js?v=20261026-automacao1';
+import { avaliarPresenca } from './presenca.js?v=20261026-agenda2';
 
 const HORA = 3600_000;
 const REGRAS = {

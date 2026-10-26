@@ -4,10 +4,10 @@
 //   2) Publicações para autorizar (lançamentos) -> card "Sua autorização" com a imagem EXATA do pacote
 //      e o código do pacote (8 primeiros caracteres do SHA-256), que precisa ser confirmado.
 // Nada expande para baixo: detalhes abrem em folha (de baixo para cima) ou modal (fundo escuro).
-import { h, icone, iconeDoTipo, abrirFolha, abrirModal, botaoCopiar, chip, vazio } from '../ui/componentes.js?v=20261026-automacao1';
-import { ctx } from '../ui/contexto.js?v=20261026-automacao1';
-import { estadoPublicacao, estadoPropostaPublicacao, horarioBrasilia } from '../nucleo/estado-publicacao.js?v=20261026-automacao1';
-import { semanaDe } from '../nucleo/andamento.js?v=20261026-automacao1';
+import { h, icone, iconeDoTipo, abrirFolha, abrirModal, botaoCopiar, chip, vazio } from '../ui/componentes.js?v=20261026-agenda2';
+import { ctx } from '../ui/contexto.js?v=20261026-agenda2';
+import { estadoPublicacao, estadoPropostaPublicacao, horarioBrasilia } from '../nucleo/estado-publicacao.js?v=20261026-agenda2';
+import { semanaDe } from '../nucleo/andamento.js?v=20261026-agenda2';
 
 // ------------------------------------------------------------------ status e grupos
 const ST = {
@@ -41,31 +41,25 @@ function seloStatus(st) {
 }
 
 const SUBABAS = [
-  ['aberto', 'Em aberto', 'Esperando a decisão do dono.'],
-  ['autorizadas', 'Autorizadas', 'Sua autorização foi registrada. Ainda falta confirmar a publicação.'],
-  ['concluidas', 'Concluídas', 'Já foram para o jogo ou foram recusadas.'],
-  ['pendencias', 'Pendências', 'Itens bloqueados, devolvidos ou com integração, horário ou confirmação pendentes.'],
-  ['agendadas', 'Agendadas', 'Aprovadas e em preparo, com data prevista para ir ao jogo.'],
+  ['aberto', 'Para decidir', 'Aprove a ideia ou, quando o pacote estiver pronto, dê a autorização final separada.'],
+  ['agendadas', 'Em preparação', 'Fila aprovada, desenvolvimento, testes, ajustes e pendências. Aprovar ou marcar para hoje não comprova início da equipe.'],
+  ['autorizadas', 'Para publicar', 'Pacotes autorizados. Ainda falta confirmar a publicação.'],
+  ['concluidas', 'Publicadas', 'Publicações confirmadas do jogo, da thumbnail ou da divulgação, conforme a categoria.'],
   ['todas', 'Todas', 'Tudo, do mais novo para o mais antigo.'],
 ];
 
-const hoje = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
-const futura = d => !!d && String(d).slice(0, 10) >= hoje();
-
 const GRUPOS_PROPOSTA = {
-  aberto: p => DECIDIVEIS.includes(p.status),
+  aberto: p => DECIDIVEIS.includes(p.status) && !p.bloqueio || estadoDaProposta(p).podeAutorizar,
   autorizadas: p => estadoDaProposta(p).status === ST.APROVADA_PUB,
-  concluidas: p => [ST.PUBLICADA, ST.REJEITADA].includes(estadoDaProposta(p).status),
-  pendencias: p => [ST.BLOQUEADA, ST.DEVOLVIDA, 'CONFIRMAÇÃO PENDENTE'].includes(estadoDaProposta(p).status),
-  agendadas: p => [ST.APROVADA_DEV, ST.EM_DEV, ST.EM_TESTES, ST.AGUARDANDO_FINAL].includes(estadoDaProposta(p).status),
+  concluidas: p => estadoDaProposta(p).confirmada,
+  agendadas: p => p.status !== ST.REJEITADA && !GRUPOS_PROPOSTA.aberto(p) && !GRUPOS_PROPOSTA.autorizadas(p) && !GRUPOS_PROPOSTA.concluidas(p),
   todas: () => true,
 };
 const GRUPOS_LANCAMENTO = {
   aberto: l => l.status === ST.AGUARDANDO_FINAL,
   autorizadas: l => l.status === ST.APROVADA_PUB,
   concluidas: l => fluxo(l).confirmada,
-  pendencias: l => fluxo(l).requerAtencao,
-  agendadas: l => ![ST.PUBLICADA, ST.BLOQUEADA, ST.DEVOLVIDA, ST.AGUARDANDO_FINAL, ST.APROVADA_PUB].includes(l.status) && futura(l.dataAlvo),
+  agendadas: l => !GRUPOS_LANCAMENTO.aberto(l) && !GRUPOS_LANCAMENTO.autorizadas(l) && !GRUPOS_LANCAMENTO.concluidas(l),
   todas: () => true,
 };
 
@@ -94,7 +88,18 @@ const dados = () => ctx.estado?.dados || {};
 const propostas = () => dados().propostas?.propostas || [];
 const lancamentos = () => dados().lancamentos?.lancamentos || [];
 const configPublicacao = () => ({ ...(dados().config || {}), tarefas: dados().tarefas?.tarefas || [] });
-const estadoDaProposta = p => estadoPropostaPublicacao(p, lancamentos(), configPublicacao());
+const estadoDaProposta = p => {
+  const f = estadoPropostaPublicacao(p, lancamentos(), configPublicacao());
+  if (!f.confirmada && !f.lancamento) f.horario = `${textoPlanejamento(p)}. O planejamento não garante entrega pronta nem publicação.`;
+  if (!f.lancamento && !p.bloqueio && [ST.APROVADA_DEV, ST.EM_DEV].includes(p.status)) {
+    const iniciada = p.status === ST.EM_DEV;
+    return { ...f, status: p.status, titulo: iniciada ? 'Em desenvolvimento real' : 'Aprovada. Aguarda equipe',
+      acaoCurta: iniciada ? 'Equipe: desenvolver e registrar no Andamento' : 'Equipe: iniciar a preparação',
+      proximaAcao: iniciada ? 'A proposta está em desenvolvimento. Acompanhe as etapas e evidências no Andamento.'
+        : 'A ideia foi aprovada e está na fila. Aguarda a equipe iniciar e registrar o trabalho no Andamento. A publicação terá autorização final separada.' };
+  }
+  return f;
+};
 const ehImagem = c => /\.(png|jpe?g|webp)$/i.test(String(c || ''));
 const linkSeguro = (url, texto) => (/^https:\/\//.test(url || '') ? h('a', { href: url, target: '_blank', rel: 'noopener noreferrer' }, texto, icone('externo', { tamanho: 14 })) : h('span', {}, texto));
 
@@ -310,6 +315,7 @@ function cardProposta(p) {
     h('div', { class: 'dc-card-corpo' },
       h('h3', { class: 'dc-card-titulo', title: p.titulo }, `${p.id} · ${curto(p.titulo, 55)}`),
       resumoEstado(f),
+      h('p', { class: 'dc-card-planejamento dc-fraco' }, textoPlanejamento(p)),
       h('span', { class: 'dc-pe-abrir' }, 'Ver detalhes', icone('direita', { tamanho: 18 })))));
 }
 
@@ -317,6 +323,76 @@ function cardProposta(p) {
 function resumoEstado(f) {
   return [h('p', { class: `dc-card-estado ${f.tom}`, title: f.titulo }, f.titulo),
     h('p', { class: 'dc-card-proxima', title: f.acaoCurta }, f.acaoCurta)];
+}
+
+const planejamento = p => p.agendamentoPublicacao || p.fazerHoje;
+function textoPlanejamento(p) {
+  const a = planejamento(p);
+  return a?.data && a?.horario ? `Planejado para ${horarioBrasilia(`${a.data}T${a.horario}:00-03:00`) || `${a.data} às ${a.horario}`}` : 'Ainda não definido';
+}
+function pacotesDaAgenda(p) {
+  return lancamentos().filter(l => l.propostaIds?.includes(p.id)
+    && (l.conferencia?.propostas?.find(c => c.propostaId === p.id)?.versaoProposta ?? p.versao) === p.versao);
+}
+function impedimentoAgenda(p) {
+  if (p.status === ST.REJEITADA) return 'Proposta rejeitada: não é possível agendar a publicação.';
+  if (p.status === ST.PUBLICADA || estadoDaProposta(p).confirmada || pacotesDaAgenda(p).some(l => l.status === ST.PUBLICADA)) return 'Publicação já registrada: não é possível alterar a data.';
+  if (pacotesDaAgenda(p).some(l => l.propostaIds.length > 1)) return 'Pacote compartilhado: a equipe precisa separar a entrega desta proposta antes de alterar a data.';
+  return '';
+}
+function blocoAgendaProposta(p, fechar) {
+  const impedimento = impedimentoAgenda(p);
+  return h('section', { class: 'dc-agenda', 'aria-label': `Planejamento da publicação ${p.id}` },
+    h('strong', {}, 'Planejamento da publicação'), h('p', {}, textoPlanejamento(p)),
+    h('p', { class: 'dc-fraco' }, 'Esta data planeja a publicação. O início do desenvolvimento depende da equipe; a entrega precisa ficar pronta, ser testada e receber autorização final.'),
+    impedimento ? h('p', { class: 'dc-fraco' }, impedimento) : null,
+    ehDono() ? botaoDc('Alterar data e horário', { classe: 'dc-btn-claro dc-largo', iconeNome: 'calendario', desativado: !!impedimento,
+      onclick: () => folhaAgenda(p, fechar) }) : null);
+}
+function blocoAgendaLancamento(l, fechar) {
+  if (ehEvento(l)) return h('p', { class: 'dc-fraco' }, 'O calendário desta divulgação é separado do planejamento da atualização no Roblox Studio.');
+  const itens = (l.propostaIds || []).map(id => propostas().find(p => p.id === id)).filter(Boolean);
+  return h('section', { class: 'dc-agenda' }, itens.map(p => h('div', {}, blocoAgendaProposta(p, fechar),
+    botaoDc(`Ver proposta ${p.id}`, { classe: 'dc-btn-claro dc-largo', onclick: () => { fechar?.(); abrirProposta(p.id); } }))));
+}
+function folhaAgenda(p, fecharOrigem) {
+  if (!ehDono() || impedimentoAgenda(p)) return;
+  abrirFolha({ titulo: 'Alterar data e horário', conteudo: fechar => {
+    const a = planejamento(p);
+    const data = h('input', { type: 'date', class: 'dc-campo', value: a?.data || '', id: `dc-agenda-data-${p.id}`, 'aria-label': 'Data planejada da publicação' });
+    const hora = h('input', { type: 'time', class: 'dc-campo', value: a?.horario || '', step: 300, id: `dc-agenda-hora-${p.id}`, 'aria-label': 'Horário planejado da publicação (Brasília)' });
+    const erro = h('p', { class: 'dc-erro', role: 'alert', hidden: true }, 'Escolha uma data e um horário válidos.');
+    const voltar = botaoDc('Voltar', { classe: 'dc-btn-claro', onclick: fechar });
+    const salvar = botaoDc('Salvar planejamento', { classe: 'dc-btn-roxo dc-btn-grande' });
+    const gravar = async (botoes, fecharAviso) => {
+      const ok = await ctx.gravar('/api/propostas/agendar', { id: p.id, data: data.value, horario: hora.value, versao: p.versao }, botoes, 'Planejamento da publicação salvo.');
+      const atual = propostas().find(x => x.id === p.id);
+      if (ok && atual?.agendamentoPublicacao?.data === data.value && atual.agendamentoPublicacao.horario === hora.value) {
+        fecharAviso?.(); fechar(); fecharOrigem?.(); ctx.render?.(); abrirProposta(p.id);
+      }
+    };
+    salvar.addEventListener('click', async () => {
+      const dia = new Date(`${data.value}T12:00:00Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(data.value) || !Number.isFinite(dia.getTime()) || dia.toISOString().slice(0, 10) !== data.value || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hora.value)) {
+        erro.hidden = false; data.focus(); return;
+      }
+      if (impedimentoAgenda(propostas().find(x => x.id === p.id) || p)) { erro.textContent = 'O estado mudou. Reabra os detalhes para conferir antes de agendar.'; erro.hidden = false; return; }
+      if (!pacotesDaAgenda(p).some(l => l.status === ST.APROVADA_PUB || l.autorizacao)) return gravar([salvar, voltar]);
+      abrirFolha({ titulo: 'Cancelar a assinatura e alterar a data?', conteudo: fecharAviso => {
+        const cancelar = botaoDc('Voltar', { classe: 'dc-btn-claro', onclick: fecharAviso });
+        const confirmar = botaoDc('Trocar data e cancelar assinatura', { classe: 'dc-btn-amarelo dc-btn-grande' });
+        confirmar.addEventListener('click', () => gravar([confirmar, cancelar], fecharAviso));
+        return h('div', { class: 'dc-confirma' }, h('p', { role: 'alert' }, 'Este pacote já foi autorizado. Alterar a data cancela a assinatura atual. Será necessária uma nova autorização final antes da publicação.'),
+          h('p', {}, `Nova previsão: ${data.value} às ${hora.value} (Brasília). A data não garante que a entrega estará pronta.`),
+          h('div', { class: 'dc-confirma-botoes' }, confirmar, cancelar));
+      } });
+    });
+    return h('div', { class: 'dc-confirma dc-agenda' }, h('p', {}, 'Planeje a publicação desta proposta. Agendar não aprova a ideia, não inicia o desenvolvimento e não garante a entrega pronta.'),
+      h('p', {}, textoPlanejamento(p)),
+      h('label', { class: 'dc-rotulo', for: `dc-agenda-data-${p.id}` }, 'Data da publicação'), data,
+      h('label', { class: 'dc-rotulo', for: `dc-agenda-hora-${p.id}` }, 'Horário (Brasília)'), hora, erro,
+      h('div', { class: 'dc-confirma-botoes' }, salvar, voltar));
+  } });
 }
 
 function blocoEstadoProposta(p, { compacto = false, fechar } = {}) {
@@ -396,9 +472,10 @@ function abrirProposta(id) {
       const plano = p.hipotese ? `${p.hipotese.metrica}: ${p.hipotese.esperado}` : null;
       return h('div', { class: 'dc-detalhe' },
         blocoEstadoProposta(p, { fechar }),
+        blocoAgendaProposta(p, fechar),
         heroi,
         h('div', { class: 'dc-card-chips' }, chipCategoria(p) || chip(p.tipo || 'ideia', { iconeNome: iconeDoTipo(p.tipo) }), p.mudaDesign ? chip('Muda o visual do jogo', { tom: 'quente', iconeNome: 'pincel' }) : null,
-          p.semanaAlvo ? chip(`Previsto ${dataCurta(p.semanaAlvo)}`, { iconeNome: 'calendario' }) : null),
+          planejamento(p)?.data ? chip(textoPlanejamento(p), { iconeNome: 'calendario' }) : null),
         h('h2', { class: 'dc-detalhe-titulo' }, p.titulo),
         p.bloqueio ? h('div', { class: 'dc-alerta warn' }, icone('alerta', { tamanho: 20 }), h('div', {}, h('strong', {}, 'Ainda não dá para decidir. '), p.bloqueio)) : null,
         resumoDestaque(p.resumo || p.descricao),
@@ -455,13 +532,16 @@ function folhaFazerHoje(p, { aprovarAntes = false, fecharModal } = {}) {
           if (propostas().find(x => x.id === p.id)?.status === antes) return;
         }
         await ctx.gravar('/api/propostas/fazer-hoje', { propostaId: p.id, horario: hora.value }, [ok, voltar], `Marcada para hoje, meta ${hora.value}.`);
-        if (ehHoje(propostas().find(x => x.id === p.id) || {})) { fechar(); fecharModal?.(); }
+        const atual = propostas().find(x => x.id === p.id);
+        if (ehHoje(atual || {}) || aprovarAntes && atual && !DECIDIVEIS.includes(atual.status)) {
+          continuarProposta(atual, fechar, fecharModal);
+        }
       });
       return h('div', { class: 'dc-confirma' },
         h('div', { class: 'dc-confirma-icone amarelo' }, icone('raio', { tamanho: 30 })),
         h('p', { class: 'dc-confirma-texto' }, 'A equipe prioriza esta ideia e entrega um pacote só dela. Quando estiver pronto, revise as imagens e os vídeos no Andamento. Depois confira o código, toque em Autorizar publicação e confirme no seu aparelho.'),
         h('div', { class: 'dc-confirma-alvo' }, miniaturaProposta(p, 'dc-midia-mini'), h('div', {}, h('strong', {}, p.titulo), h('div', { class: 'dc-fraco' }, `${p.id} · versão ${p.versao}`))),
-        h('label', { class: 'dc-rotulo', for: `dc-hoje-${p.id}` }, 'Horário de publicação (Brasília)'), hora, erro,
+        h('label', { class: 'dc-rotulo', for: `dc-hoje-${p.id}` }, 'Meta de horário (Brasília)'), hora, erro,
         h('p', { class: 'dc-fraco' }, 'Esse horário é uma meta. A autorização permite iniciar o envio, que depende das verificações. Se o horário passar, acompanhe o estado real no Andamento; a publicação só está concluída após a confirmação.'),
         h('div', { class: 'dc-confirma-botoes' }, ok, voltar));
     },
@@ -489,17 +569,29 @@ function folhaDetalhesProposta(p) {
       linha('globo', 'Fontes', fontes.length ? h('ul', { class: 'dc-ul' }, fontes.map(f => h('li', {}, f.url ? linkSeguro(f.url, f.titulo) : f.titulo, f.data ? h('span', { class: 'dc-fraco' }, ` (${f.data})`) : null))) : null),
       linha('esquerda', 'Se der errado', p.recuperacao),
       linha('jogadores', 'Responsável', p.responsavel),
-      linha('calendario', 'Versão e data', `Versão ${p.versao} · previsto para ${diaSemana(p.semanaAlvo).toLowerCase()} ${dataCurta(p.semanaAlvo)}`),
+      linha('calendario', 'Versão e data', `Versão ${p.versao} · ${textoPlanejamento(p)}`),
       (p.decisoes || []).length ? linha('decisoes', `Decisões anteriores (${p.decisoes.length})`, h('ul', { class: 'dc-ul' }, p.decisoes.map(d => h('li', {}, `${({ aprovar: 'Aprovou', rejeitar: 'Rejeitou', pedir_alteracoes: 'Pediu alterações', adiar: 'Adiou' })[d.acao] || d.acao} — ${d.por?.nome || ''}, ${dataHora(d.em)}${d.comentario ? `: “${d.comentario}”` : ''}`)))) : null),
   });
 }
 
 const INFO_DECISAO = {
-  aprovar: { titulo: 'Aprovar esta ideia?', icone: 'ok', tom: 'roxo', texto: 'A equipe começa a preparar. Nada vai para o jogo agora: a publicação pede a sua autorização final depois, em outra etapa.', botao: 'Sim, aprovar', classe: 'dc-btn-roxo', comentario: 'Comentário (opcional)', msg: 'Ideia aprovada. A equipe já pode preparar.' },
+  aprovar: { titulo: 'Aprovar esta ideia?', icone: 'ok', tom: 'roxo', texto: 'A ideia entra na fila de preparação e aguarda a equipe. A publicação pede a sua autorização final depois, em outra etapa.', botao: 'Sim, aprovar', classe: 'dc-btn-roxo', comentario: 'Comentário (opcional)', msg: 'Aprovada. Aguarda equipe.' },
   pedir_alteracoes: { titulo: 'Pedir alterações', icone: 'editar', tom: 'amarelo', texto: 'A proposta volta para a equipe ajustar e depois aparece de novo para você.', botao: 'Enviar pedido', classe: 'dc-btn-roxo', comentario: 'O que precisa mudar? (obrigatório)', obrigatorio: true, msg: 'Pedido de alterações enviado.' },
   adiar: { titulo: 'Adiar esta ideia?', icone: 'relogio', tom: 'neutro', texto: 'A ideia fica guardada e você pode decidir em outro momento.', botao: 'Sim, adiar', classe: 'dc-btn-roxo', comentario: 'Comentário (opcional)', msg: 'Ideia adiada.' },
   rejeitar: { titulo: 'Rejeitar esta ideia?', icone: 'fechar', tom: 'vermelho', texto: 'A ideia é arquivada. Ela só volta se aparecer um motivo novo e você permitir.', botao: 'Sim, rejeitar', classe: 'dc-btn-perigo-cheio', comentario: 'Motivo (opcional)', msg: 'Ideia rejeitada.' },
 };
+
+// Após gravar, mantém a proposta acessível com o estado devolvido pelo servidor.
+// Mudar o filtro não inicia desenvolvimento, não altera dados e não autoriza envio.
+function continuarProposta(p, fechar, fecharModal) {
+  fechar(); fecharModal?.();
+  const categoria = p.tipo === 'thumbnail' ? 'thumbnail' : 'jogo';
+  const sub = ctx.estado.sub || (ctx.estado.sub = {});
+  const estados = sub.decisoesCategorias || (sub.decisoesCategorias = {});
+  estados[categoria] = { area: 'ideias', filtro: 'agendadas' };
+  ctx.render?.();
+  abrirProposta(p.id);
+}
 
 function confirmarDecisao(p, acao, fecharModal) {
   const info = INFO_DECISAO[acao];
@@ -515,7 +607,10 @@ function confirmarDecisao(p, acao, fecharModal) {
         const antes = p.status;
         await ctx.gravar('/api/propostas/decisao', { propostaId: p.id, acao, comentario: campo.value, versao: p.versao }, [ok, voltar], info.msg);
         const agora = propostas().find(x => x.id === p.id);
-        if (agora && agora.status !== antes) { fechar(); fecharModal?.(); }
+        if (agora && agora.status !== antes) {
+          if (acao === 'aprovar') continuarProposta(agora, fechar, fecharModal);
+          else { fechar(); fecharModal?.(); }
+        }
       });
       return h('div', { class: 'dc-confirma' },
         h('div', { class: `dc-confirma-icone ${info.tom}` }, icone(info.icone, { tamanho: 30 })),
@@ -644,6 +739,7 @@ function cardAutorizacao(l, fecharModal) {
       seloStatus(l.status)),
     botaoKitEvento(l),
     blocoEvidencias(l, fecharModal),
+    blocoAgendaLancamento(l, fecharModal),
     blocoFluxo(l, { atalho: false, marcos: false }),
     midiaDoLancamento(l),
     h('div', { class: 'dc-aut-fatos' },
@@ -728,6 +824,7 @@ function folhaLancamento(l) {
     titulo: `Detalhes de ${l.id}`,
     conteudo: fechar => h('div', { class: 'dc-folha-det' },
       blocoEvidencias(l, fechar), blocoFluxo(l, { fechar, atalho: false }),
+      blocoAgendaLancamento(l, fechar),
       linha('raio', 'O que muda', (l.changelog || []).length ? h('ul', { class: 'dc-ul' }, l.changelog.map(c => h('li', {}, c))) : null),
       linha('qualidade', 'Testes', l.testes ? `${l.testes.resultado === 'aprovado' ? 'Aprovados' : 'Não aprovados'}${l.testes.detalhes ? ` — ${l.testes.detalhes}` : ''}` : null),
       linha('alerta', 'O que pode dar errado', l.riscos),
@@ -764,6 +861,7 @@ function abrirLancamento(id) {
     conteudo: fechar => h('div', { class: 'dc-detalhe' },
       botaoKitEvento(l),
       blocoEvidencias(l, fechar), blocoFluxo(l, { fechar, atalho: false }),
+      blocoAgendaLancamento(l, fechar),
       midiaDoLancamento(l),
       h('div', { class: 'dc-card-chips' }, chip(fluxo(l).titulo, { tom: fluxo(l).tom, iconeNome: fluxo(l).icone }), chip(l.id, { iconeNome: 'foguete' })),
       h('div', { class: 'dc-aut-fatos' },
@@ -817,7 +915,10 @@ export function telaDecisoes({ categoria } = {}) {
   if (!DESTINOS[categoria]) return h('div', { class: 'tela-decisoes' },
     h('p', { class: 'dc-fraco' }, 'Todas são propostas. Escolha onde serão aplicadas.'),
     h('div', { class: 'dc-hub' }, Object.values(DESTINOS).map(d => h('button', { type: 'button', class: 'dc-btn dc-btn-claro dc-hub-categoria', onclick: () => ctx.irPara?.(d.rota) },
-      icone(d.icone, { tamanho: 28 }), h('span', {}, h('strong', {}, d.nome), h('small', {}, d.descricao)), icone('direita', { tamanho: 20 })))));
+      icone(d.icone, { tamanho: 28 }), h('span', {}, h('strong', {}, d.nome), h('small', {}, d.descricao),
+        h('small', {}, d.rota === 'eventos'
+          ? `Divulgações em preparação: ${lancamentos().filter(l => ehEvento(l) && GRUPOS_LANCAMENTO.agendadas(l)).length}`
+          : `Aprovadas em preparação: ${propostas().filter(p => (p.tipo === 'thumbnail' ? 'thumbnails' : 'studio') === d.rota && GRUPOS_PROPOSTA.agendadas(p)).length}`)), icone('direita', { tamanho: 20 })))));
   const destino = DESTINOS[categoria];
   const pedidoRota = sub[destino.rota];
   const pedido = pedidoRota?.id ? pedidoRota : legado && categoriaDoPedido(legado) === categoria ? legado : null;
@@ -833,27 +934,36 @@ export function telaDecisoes({ categoria } = {}) {
   const todasL = [...lancamentos()].filter(l => (l.tipo || 'jogo') === categoria).reverse();
   const todasP = [...propostas()].filter(p => categoria === 'thumbnail' ? p.tipo === 'thumbnail' : categoria === 'jogo' ? p.tipo !== 'thumbnail'
     : p.anunciarEmEvento || todasL.some(l => l.propostaIds?.includes(p.id))).reverse();
-  const ideiasPendentes = todasP.filter(p => categoria === 'evento' ? !referenciaEvento(p).lancamento : DECIDIVEIS.includes(p.status) && !p.bloqueio).length;
   const pubPendentes = todasL.filter(l => l.status === ST.AGUARDANDO_FINAL).length;
-
-  // Área padrão: se há publicação esperando, ela vem primeiro (é a etapa mais importante).
-  const area = estado.area || (todasL.length ? 'publicacoes' : 'ideias');
-  const filtroInicial = area === 'publicacoes' && !pubPendentes ? 'todas' : 'aberto';
-  const filtro = estado.filtro && SUBABAS.some(s => s[0] === estado.filtro) ? estado.filtro : filtroInicial;
+  const gruposEvento = {
+    aberto: p => referenciaEvento(p).lancamento && GRUPOS_LANCAMENTO.aberto(referenciaEvento(p).lancamento),
+    autorizadas: p => referenciaEvento(p).status === ST.APROVADA_PUB,
+    concluidas: p => !!referenciaEvento(p).confirmada,
+    agendadas: p => !gruposEvento.aberto(p) && !gruposEvento.autorizadas(p) && !gruposEvento.concluidas(p),
+    todas: () => true,
+  };
+  const gruposP = categoria === 'evento' ? gruposEvento : GRUPOS_PROPOSTA;
+  const emPreparacao = todasP.filter(gruposP.agendadas).length;
+  const migrarAberto = !estado.fluxoAtual && estado.filtro === 'aberto';
+  // A fila aprovada continua visível mesmo quando já existem pacotes antigos.
+  let area = estado.area || (emPreparacao ? 'ideias' : pubPendentes ? 'publicacoes' : todasP.length ? 'ideias' : 'publicacoes');
+  if (migrarAberto && !(area === 'ideias' ? todasP.filter(gruposP.aberto).length : pubPendentes) && emPreparacao) area = 'ideias';
+  const grupos = area === 'ideias' ? gruposP : GRUPOS_LANCAMENTO;
+  const base = area === 'ideias' ? todasP : todasL;
+  const filtroInicial = base.some(grupos.agendadas) ? 'agendadas' : base.some(grupos.aberto) ? 'aberto' : 'todas';
+  const filtroSalvo = estado.filtro === 'pendencias' ? 'agendadas' : estado.filtro;
+  const filtro = migrarAberto && !base.some(grupos.aberto) && emPreparacao ? 'agendadas'
+    : filtroSalvo && SUBABAS.some(s => s[0] === filtroSalvo) ? filtroSalvo : filtroInicial;
   estado.area = area;
   estado.filtro = filtro;
+  estado.fluxoAtual = true;
   const escolher = (_chave, valor) => { estado.filtro = valor; ctx.render?.(); };
 
-  const botaoArea = (id, iconeNome, n, rotulo, explica) => h('button', {
+  const botaoArea = (id, iconeNome, n, rotulo) => h('button', {
     type: 'button', class: 'dc-filtro', 'aria-pressed': String(area === id),
-    onclick: () => { estado.area = id; estado.filtro = n ? 'aberto' : 'todas'; ctx.render?.(); },
+    onclick: () => { estado.area = id; estado.filtro = null; ctx.render?.(); },
   }, icone(iconeNome, { tamanho: 18 }), rotulo, h('span', { class: 'dc-filtro-n' }, String(n)));
 
-  const gruposEvento = { aberto: p => !referenciaEvento(p).lancamento, autorizadas: p => referenciaEvento(p).status === ST.APROVADA_PUB,
-    concluidas: p => !!referenciaEvento(p).confirmada, pendencias: p => [ST.BLOQUEADA, ST.DEVOLVIDA, 'CONFIRMAÇÃO PENDENTE'].includes(referenciaEvento(p).status),
-    agendadas: p => !referenciaEvento(p).lancamento, todas: () => true };
-  const grupos = area === 'ideias' ? categoria === 'evento' ? gruposEvento : GRUPOS_PROPOSTA : GRUPOS_LANCAMENTO;
-  const base = area === 'ideias' ? todasP : todasL;
   const contagem = Object.fromEntries(SUBABAS.map(([id]) => [id, base.filter(grupos[id]).length]));
   const lista = base.filter(grupos[filtro]);
   const explicacao = SUBABAS.find(s => s[0] === filtro)[2];
@@ -866,7 +976,7 @@ export function telaDecisoes({ categoria } = {}) {
     conteudo = h('div', { class: 'dc-grade-cards' }, preparando.map(cardIdeiaPreparando), lista.map(prepararCard));
   } else if (!lista.length) {
     const msgs = {
-      ideias: { aberto: 'Nenhuma ideia esperando você. Novas propostas chegam toda terça.' },
+      ideias: { aberto: 'Nenhuma ideia esperando sua decisão. As aprovadas continuam em Em preparação.' },
       publicacoes: { aberto: 'Nada para autorizar agora. Quando um pacote ficar pronto, ele aparece aqui.' },
     };
     conteudo = vazio(msgs[area][filtro] || 'Nada por aqui.', filtro === 'aberto' ? 'ok' : 'calendario');
@@ -884,7 +994,7 @@ export function telaDecisoes({ categoria } = {}) {
   const totalFeitas = Object.keys(META).reduce((n, c) => n + Math.min(META[c], feitas[c]), 0);
   const blocoSemana = categoria !== 'jogo' || area !== 'ideias' ? null : h('div', { class: 'dc-meta-semana' },
     h('div', { class: 'dc-meta-topo' }, icone('calendario', { tamanho: 18 }), h('strong', {}, `Propostas da semana: ${totalFeitas} de 7`),
-      h('span', { class: 'dc-fraco' }, totalFeitas >= 7 ? 'semana completa' : 'chegam toda segunda e terça')),
+      h('span', { class: 'dc-fraco' }, 'Meta da equipe; não confirma entrega nem horário')),
     h('div', { class: 'dc-card-chips' }, Object.entries(META).map(([c, meta]) => {
       const [nome, ic] = CATEGORIAS[c];
       return chip(`${nome} ${Math.min(meta, feitas[c])}/${meta}`, { tom: feitas[c] >= meta ? 'ok' : '', iconeNome: ic });
@@ -893,8 +1003,11 @@ export function telaDecisoes({ categoria } = {}) {
   const tela = h('div', { class: 'tela-decisoes' },
     h('header', { class: 'dc-categoria', 'aria-label': destino.nome }, h('p', { class: 'dc-fraco' }, destino.descricao)),
     h('div', { class: 'dc-etapas', role: 'group', 'aria-label': `Etapa das propostas de ${destino.nome}` },
-      botaoArea('ideias', 'lampada', ideiasPendentes, categoria === 'evento' ? 'Propostas vinculadas' : 'Aprovar ideia'),
-      botaoArea('publicacoes', 'foguete', pubPendentes, 'Autorizar entrega')),
+      botaoArea('ideias', 'lampada', todasP.length, categoria === 'evento' ? 'Propostas vinculadas' : 'Propostas'),
+      botaoArea('publicacoes', 'foguete', todasL.length, 'Entregas · autorização final')),
+    h('button', { type: 'button', class: 'dc-btn dc-btn-claro dc-largo', onclick: () => {
+      estado.area = 'ideias'; estado.filtro = 'agendadas'; ctx.render?.();
+    } }, icone('martelo', { tamanho: 20 }), `${categoria === 'evento' ? 'Divulgação' : 'Aprovadas'} em preparação: ${emPreparacao}`),
     blocoSemana,
     h('div', { class: 'dc-filtros', role: 'group', 'aria-label': 'Filtrar por situação' },
       SUBABAS.map(([id, nome]) => h('button', { type: 'button', class: 'dc-filtro', 'aria-pressed': String(filtro === id), onclick: () => escolher('decisoes', id) },

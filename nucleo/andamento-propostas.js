@@ -1,6 +1,6 @@
 // Leitura do Andamento por proposta, fora do Explorer. Não altera registros ou aprovações.
-import { avaliarPresenca } from './presenca.js?v=20261026-automacao1';
-import { estadoPropostaPublicacao } from './estado-publicacao.js?v=20261026-automacao1';
+import { avaliarPresenca } from './presenca.js?v=20261026-agenda2';
+import { estadoPropostaPublicacao } from './estado-publicacao.js?v=20261026-agenda2';
 
 const APROVADAS = new Set(['APROVADA PARA DESENVOLVIMENTO', 'EM DESENVOLVIMENTO', 'EM TESTES', 'AGUARDANDO AUTORIZAÇÃO FINAL', 'APROVADA PARA PUBLICAÇÃO', 'PUBLICADA']);
 const ACOMPANHAVEIS = new Set([...APROVADAS, 'BLOQUEADA', 'DEVOLVIDA PARA AJUSTES']);
@@ -26,8 +26,9 @@ function agendaFutura(p, dados, agora) {
   const tarefas = (dados.tarefas?.tarefas || []).filter(t => t.propostaId === p.id && !['CONCLUÍDA', 'CANCELADA'].includes(t.status))
     .map(t => t.agendadaPara).filter(v => instante(v) > agora).sort((a, b) => instante(a) - instante(b));
   if (tarefas.length) return tarefas[0];
-  const data = p.fazerHoje?.data || p.semanaAlvo;
-  const hora = p.fazerHoje ? p.fazerHoje.horario : dados.config?.horarioPublicacao;
+  const agenda = p.agendamentoPublicacao || p.fazerHoje;
+  const data = agenda?.data || p.semanaAlvo;
+  const hora = agenda ? agenda.horario : dados.config?.horarioPublicacao;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data || '')) return null;
   // Sem hora, só um dia estritamente futuro permite dizer que está esperando o dia.
   const comHora = /^([01]\d|2[0-3]):[0-5]\d$/.test(hora || '');

@@ -29,6 +29,9 @@
 .dc-categoria h2 { margin: 0 0 4px; font-size: 1.15rem; }
 .dc-etapas { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .dc-etapas .dc-filtro { white-space: normal; }
+.dc-agenda { display: grid; gap: 10px; min-width: 0; padding-block: 12px; overflow-wrap: anywhere; }
+.dc-agenda p { margin: 0; line-height: 1.45; }
+.dc-agenda input[type="date"], .dc-agenda input[type="time"] { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; min-height: 48px; font-size: 16px; }
 
 /* ---------- dois botões grandes do topo ---------- */
 .dc-areas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

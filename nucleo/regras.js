@@ -75,6 +75,96 @@ export function hojeEmBrasilia(agora = new Date()) {
 }
 
 /**
+ * Escolhe a agenda sem aprovar a ideia nem executar uma publicação.
+ * Propostas, lançamentos e auditoria devem ser persistidos na mesma transação da API.
+ * PNGs com agenda embutida exigem reentrega; alterar só o JSON não altera o pacote.
+ */
+export function agendarProposta(propostasDoc, lancamentosDoc, { id, data, horario, versao }, usuario) {
+  exigirProprietario(usuario);
+  const p = propostasDoc?.propostas?.find(item => item.id === id);
+  if (!p) throw new ErroRegra(404, 'Proposta não encontrada.');
+  if (versao != null && versao !== p.versao) throw new ErroRegra(409, 'A proposta mudou. Reabra os detalhes antes de escolher a data.');
+  if ([STATUS.REJEITADA, STATUS.PUBLICADA].includes(p.status) || p.publicadoEm) {
+    throw new ErroRegra(409, 'Esta proposta foi rejeitada ou já publicada. Crie uma nova atualização para escolher outra data.');
+  }
+  if (typeof data !== 'string' || data.length !== 10 || !/^\d{4}-\d{2}-\d{2}$/.test(data) || data.startsWith('0000-')) {
+    throw new ErroRegra(400, 'Informe uma data real no formato AAAA-MM-DD.');
+  }
+  const dia = new Date(`${data}T00:00:00.000Z`);
+  if (!Number.isFinite(dia.getTime()) || dia.toISOString().slice(0, 10) !== data) {
+    throw new ErroRegra(400, 'A data informada não existe no calendário.');
+  }
+  if (typeof horario !== 'string' || horario.length !== 5 || !/^([01]\d|2[0-3]):[0-5]\d$/.test(horario)) {
+    throw new ErroRegra(400, 'Informe o horário no formato HH:MM.');
+  }
+  const agora = new Date();
+  if (Date.parse(`${data}T${horario}:00-03:00`) <= agora.getTime()) {
+    throw new ErroRegra(400, 'Escolha uma data e um horário futuros de Brasília. Hoje é permitido se o horário ainda não passou.');
+  }
+
+  const vinculados = (lancamentosDoc?.lancamentos || []).filter(l => l.propostaIds?.includes(p.id));
+  // Valide TODOS os pacotes antes de alterar qualquer documento, inclusive o anúncio separado.
+  for (const l of vinculados) {
+    if (l.status === STATUS.PUBLICADA || l.publicadoEm) {
+      throw new ErroRegra(409, 'Existe um lançamento já publicado desta proposta. Crie uma nova atualização.');
+    }
+    if (l.disparoPublicacao?.em || ['reservada', 'enviando', 'aguardando_conferencia', 'publicada'].includes(l.automacaoThumbnail?.estado)) {
+      throw new ErroRegra(409, 'A publicação já tem disparo ou envio registrado. A equipe precisa conferir a execução antes de alterar a data.');
+    }
+    if (l.propostaIds.some(outroId => outroId !== p.id)) {
+      throw new ErroRegra(409, 'O pacote é compartilhado com outra ideia. Peça à equipe para separar o pacote antes de alterar a data.');
+    }
+  }
+
+  const anterior = p.agendamentoPublicacao || null;
+  const fazerHojeAnterior = p.fazerHoje || null;
+  const em = agora.toISOString(), por = autor(usuario);
+  const alterados = vinculados.filter(l => l.dataAlvo !== data || l.horario !== horario);
+  const resultado = [];
+  for (const l of alterados) {
+    const de = { data: l.dataAlvo || null, horario: l.horario || null, status: l.status, versao: l.versao };
+    const autorizacaoInvalidada = Boolean(l.autorizacao || l.status === STATUS.APROVADA_PUB);
+    const exigeNovaEntrega = l.tipo === 'evento' || l.tipo === 'thumbnail'
+      && (Boolean(l.thumbnailApi) || /\.png$/i.test(l.artefato?.caminho || ''));
+    const entregaValida = l.testes?.resultado === 'aprovado' && /^[a-f0-9]{64}$/.test(l.artefato?.sha256 || '');
+    const pendenciaAnterior = [STATUS.DEVOLVIDA, STATUS.BLOQUEADA].includes(l.status);
+    l.versao = (l.versao || 0) + 1;
+    l.autorizacao = null;
+    l.dataAlvo = data;
+    l.horario = horario;
+    if (l.tipo !== 'evento') l.urgente = true;
+    // Um agendamento antigo não pode impedir o novo dispatch após a nova autorização.
+    delete l.agendamentoPublicacao;
+    if (exigeNovaEntrega) {
+      l.status = STATUS.BLOQUEADA;
+      l.bloqueio = l.tipo === 'evento'
+        ? 'Data alterada: a equipe precisa refazer a capa e os textos com as datas embutidas e entregar um novo pacote antes da autorização.'
+        : 'Data alterada: a equipe precisa preparar um novo PNG com o plano e a agenda da thumbnail antes da autorização.';
+    } else if (!pendenciaAnterior) {
+      l.status = entregaValida ? STATUS.AGUARDANDO_FINAL : STATUS.BLOQUEADA;
+      if (!entregaValida) l.bloqueio = 'Data alterada: a equipe precisa conferir o artefato e concluir os testes antes da autorização.';
+    }
+    const para = { data, horario, status: l.status, versao: l.versao };
+    l.historico = [...(l.historico || []), { acao: 'agendar', em, por, de, para, autorizacaoInvalidada, exigeNovaEntrega }];
+    resultado.push({ id: l.id, de, para, autorizacaoInvalidada, exigeNovaEntrega });
+  }
+  // Preserva aprovação, versão e estágio de produção. Só retira um estado final obsoleto.
+  if (alterados.length && [STATUS.AGUARDANDO_FINAL, STATUS.APROVADA_PUB].includes(p.status)) {
+    p.status = vinculados.some(l => [STATUS.BLOQUEADA, STATUS.DEVOLVIDA].includes(l.status)) ? STATUS.EM_TESTES : STATUS.AGUARDANDO_FINAL;
+  }
+  const semAlteracao = anterior?.data === data && anterior?.horario === horario && !fazerHojeAnterior && !alterados.length;
+  if (!semAlteracao) {
+    p.agendamentoPublicacao = { data, horario, por, em };
+    delete p.fazerHoje;
+    p.historico = [...(p.historico || []), { acao: 'agendar', por, em, de: anterior, para: p.agendamentoPublicacao,
+      fazerHojeAnterior, lancamentos: resultado }];
+  }
+  return evento(usuario, 'proposta.agendar', { tipo: 'proposta', id: p.id, versao: p.versao }, {
+    resultado: { de: anterior, para: p.agendamentoPublicacao, lancamentos: resultado, semAlteracao },
+  });
+}
+
+/**
  * "Fazer hoje": o dono adianta uma proposta APROVADA para sair hoje, fora do dia normal de publicação.
  * Não aprova nada sozinho e não publica: a equipe prioriza, entrega um pacote só dela, o dono autoriza
  * (assinatura) e ela vai para o jogo assim que autorizada. `horario` é a meta do dia (ex.: evento às 19h).
@@ -96,6 +186,7 @@ export function fazerHoje(dados, usuario, { propostaId, horario, desfazer = fals
   const hora = String(horario || '').trim();
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) throw new ErroRegra(400, 'Informe o horário no formato HH:MM.');
   p.fazerHoje = { data: hojeEmBrasilia(agora), horario: hora, por: autor(usuario), em: agora.toISOString() };
+  delete p.agendamentoPublicacao;
   return evento(usuario, 'proposta.fazer_hoje', { tipo: 'proposta', id: p.id, versao: p.versao }, { resultado: { para: p.fazerHoje } });
 }
 

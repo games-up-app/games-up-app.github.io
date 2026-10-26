@@ -1,14 +1,14 @@
 // Tela Início: boas-vindas, jogo ao vivo, semana, notícia do dia, o que precisa de você e resumo.
 // Subpágina "noticias" (estado.sub.inicio === 'noticias'): todas as notícias com filtros.
-import { h, icone, chip, iconeDoTipo, abrirFolha } from '../ui/componentes.js?v=20261026-automacao1';
-import { ctx } from '../ui/contexto.js?v=20261026-automacao1';
-import { resumoAtualizacao, listarAvisos, novosAvisos, lerAvisosLidos, marcarAvisoLido, dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261026-automacao1';
-import { avaliarPresenca } from '../nucleo/presenca.js?v=20261026-automacao1';
-import { derivarSaudeAutomacao } from '../nucleo/saude-automacao.js?v=20261026-automacao1';
+import { h, icone, chip, iconeDoTipo, abrirFolha } from '../ui/componentes.js?v=20261026-agenda2';
+import { ctx } from '../ui/contexto.js?v=20261026-agenda2';
+import { resumoAtualizacao, listarAvisos, novosAvisos, lerAvisosLidos, marcarAvisoLido, dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261026-agenda2';
+import { avaliarPresenca } from '../nucleo/presenca.js?v=20261026-agenda2';
+import { derivarSaudeAutomacao } from '../nucleo/saude-automacao.js?v=20261026-agenda2';
 import {
   FUSO, num, pct, compacto, dataBR, horaBR, haQuanto, textoCurto, urlSegura, botaoLink, imagemExterna, miniaturaIcone,
   cabecalhoSecao, botaoTexto, topoSubpagina, filtrosChips, campo, blocoNumero, miniGrafico, chipStatus, cardClicavel, cardBotao,
-} from './comum.js?v=20261026-automacao1';
+} from './comum.js?v=20261026-agenda2';
 
 const d = () => ctx.estado.dados || {};
 
@@ -92,6 +92,13 @@ function atividadesDoDia(ymd) {
   const add = (hora, titulo, cat, quem, detalhe = null, acao = null, destaque = false) => itens.push({ hora, titulo, cat, quem, detalhe, acao, destaque });
   (dados.tarefas?.tarefas || []).filter(t => t.agendadaPara?.slice(0, 10) === ymd && t.status !== 'CONCLUÍDA').forEach(t =>
     add(t.agendadaPara.slice(11, 16), t.titulo, 'desenvolvimento', 'Equipe', t.descricao, () => ctx.irPara('tarefas'), true));
+  (dados.propostas?.propostas || []).filter(p => (p.agendamentoPublicacao || p.fazerHoje)?.data === ymd
+    && !['PUBLICADA', 'REJEITADA'].includes(p.status)).forEach(p => {
+      const a = p.agendamentoPublicacao || p.fazerHoje;
+      add(a.horario, `${p.id} · publicação planejada`, 'desenvolvimento', 'Equipe',
+        `${p.titulo}. Situação: ${p.status}. A data escolhida não confirma entrega pronta nem publicação.`,
+        () => ctx.irPara(p.tipo === 'thumbnail' ? 'thumbnails' : 'studio', { tipo: 'proposta', id: p.id }), true);
+    });
 
   // Itens concretos de hoje: o que espera por você e o que está sendo feito.
   if (hoje) {
@@ -105,7 +112,7 @@ function atividadesDoDia(ymd) {
   }
   // Atualizações marcadas para este dia.
   (dados.lancamentos?.lancamentos || []).filter(l => l.dataAlvo === ymd && l.status !== 'PUBLICADA').forEach(l =>
-    add(horarioPublicacao(), `Atualização ${l.id} vai para o jogo`, 'publicacao', 'GitHub', l.status === 'APROVADA PARA PUBLICAÇÃO' ? 'Já autorizada por você.' : 'Só vai se você autorizar antes.', null, true));
+    add(l.horario || horarioPublicacao(), `${l.id} · envio previsto`, 'publicacao', 'GitHub', l.status === 'APROVADA PARA PUBLICAÇÃO' ? 'Autorizada; aguarda confirmação do envio.' : 'Exige entrega pronta e autorização final.', null, true));
 
   // Exibe somente a próxima janela derivável do cron informado pela fonte, como planejamento.
   derivarSaudeAutomacao(dados).rotinas.forEach(r => {

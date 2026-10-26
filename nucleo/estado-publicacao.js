@@ -212,7 +212,7 @@ export function estadoPropostaPublicacao(p = {}, lancamentos = [], config = {}, 
   const f = estadoPublicacao({ status, testes: { resultado: 'pendente' } }, config, agora);
   return { ...f, titulo, status, tom, icone, proximaAcao, acaoCurta: decidivel ? 'Você: abrir e decidir a ideia' : status === 'REJEITADA' ? 'Nenhuma ação pendente' : status === DEVOLVIDA ? 'Equipe: corrigir, testar e reentregar' : status === 'BLOQUEADA' ? 'Equipe: resolver o bloqueio' : 'Equipe: preparar e conferir o pacote', quemAge, lancamento: decidivel ? null : l, vinculoConfirmado,
     podeAutorizar: !decidivel && !p.bloqueio && !!l && l.status === AGUARDANDO && l.testes?.resultado === 'aprovado',
-    horario: l ? estadoPublicacao(l, config, agora).horario : `${previsao({ dataAlvo: p.fazerHoje?.data || p.semanaAlvo, urgente: !!p.fazerHoje, horario: p.fazerHoje?.horario }, config, agora).texto} Sem pacote autorizado, não há publicação garantida no dia.`,
+    horario: l ? estadoPublicacao(l, config, agora).horario : `${previsao({ dataAlvo: (p.agendamentoPublicacao || p.fazerHoje)?.data || p.semanaAlvo, urgente: !!(p.agendamentoPublicacao || p.fazerHoje), horario: (p.agendamentoPublicacao || p.fazerHoje)?.horario }, config, agora).texto} Sem pacote autorizado, não há publicação garantida no dia.`,
     aviso: !l && relacionados.length ? 'Os pacotes encontrados são de outra versão da proposta. A equipe precisa entregar a versão atual.' : null,
   };
 }

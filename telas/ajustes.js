@@ -1,9 +1,9 @@
 // Tela Ajustes: conta, publicações (pausa, dia e horário), chave de autorização, celular e atalhos.
-import { h, icone, chip, interruptor, botaoCopiar, abrirFolha } from '../ui/componentes.js?v=20261026-automacao1';
-import { ctx } from '../ui/contexto.js?v=20261026-automacao1';
-import { derivarSaudeAutomacao } from '../nucleo/saude-automacao.js?v=20261026-automacao1';
-import { dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261026-automacao1';
-import { dataBR, cabecalhoSecao, segmentado, campo, chipStatus, cardBotao, rotuloStatus } from './comum.js?v=20261026-automacao1';
+import { h, icone, chip, interruptor, botaoCopiar, abrirFolha } from '../ui/componentes.js?v=20261026-agenda2';
+import { ctx } from '../ui/contexto.js?v=20261026-agenda2';
+import { derivarSaudeAutomacao } from '../nucleo/saude-automacao.js?v=20261026-agenda2';
+import { dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261026-agenda2';
+import { dataBR, cabecalhoSecao, segmentado, campo, chipStatus, cardBotao, rotuloStatus } from './comum.js?v=20261026-agenda2';
 
 const d = () => ctx.estado.dados || {};
 

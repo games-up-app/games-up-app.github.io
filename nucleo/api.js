@@ -1,9 +1,9 @@
 // "API" do painel rodando no próprio navegador.
 // Mantém as mesmas rotas da versão com servidor, mas lê e grava direto no repositório
 // privado (RepoGitHub) com o token do proprietário. Quem tem o token é o proprietário.
-import { ErroRegra, STATUS, decidirProposta, fazerHoje, comentar, atualizarTarefa, decidirLancamento, alterarConfig } from './regras.js?v=20261026-automacao1';
-import { validarIdeia } from './ideias.js?v=20261026-automacao1';
-import { decidirEtapa } from './revisao-etapas.js?v=20261026-automacao1';
+import { ErroRegra, STATUS, decidirProposta, agendarProposta, fazerHoje, comentar, atualizarTarefa, decidirLancamento, alterarConfig } from './regras.js?v=20261026-agenda2';
+import { validarIdeia } from './ideias.js?v=20261026-agenda2';
+import { decidirEtapa } from './revisao-etapas.js?v=20261026-agenda2';
 
 const ARQUIVOS = ['meta', 'metricas', 'ideias', 'andamento', 'analytics', 'jogo', 'concorrentes', 'noticias', 'thumbnails', 'propostas', 'tarefas', 'tendencias', 'discord', 'lancamentos', 'comentarios', 'config', 'saude-agendamentos', 'relatorios/indice', 'executor', 'presenca', 'push/inscricoes', 'push/confirmacoes'];
 
@@ -108,6 +108,23 @@ export function criarApi({ store, usuario, assinar = null, papel = 'proprietario
         await auditar(tx, ev);
         return { proposta: propostas.propostas.find(p => p.id === c.propostaId), evento: ev };
       }, `painel: ${c.acao} ${c.propostaId} (proprietário)`);
+      return { ok: true, ...r };
+    },
+
+    'POST /api/propostas/agendar': async corpo => {
+      const c = texto(corpo);
+      const r = await store.transacao(async tx => {
+        const propostas = await tx.ler('propostas.json');
+        const lancamentos = (await tx.ler('lancamentos.json')) || { lancamentos: [] };
+        const ev = agendarProposta(propostas, lancamentos, c, eu);
+        if (!ev.resultado.semAlteracao) {
+          tx.gravar('propostas.json', propostas);
+          if (ev.resultado.lancamentos.length) tx.gravar('lancamentos.json', lancamentos);
+          await auditar(tx, ev);
+        }
+        return { proposta: propostas.propostas.find(p => p.id === c.id), evento: ev,
+          lancamentos: lancamentos.lancamentos.filter(l => l.propostaIds?.includes(c.id)) };
+      }, `painel: agendar ${c.id} (proprietário)`);
       return { ok: true, ...r };
     },
 
