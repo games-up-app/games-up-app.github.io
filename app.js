@@ -348,8 +348,9 @@ function render() {
   }
   const pagina = TODAS.find(a => a.id === estado.aba) || ABAS[0];
   const abaAtiva = pagina.pai || pagina.id;
+  const categoriaAberta = ['studio', 'eventos', 'thumbnails'].includes(abaAtiva);
   const n = contagemDecisoes();
-  const botaoAba = a => h('button', { type: 'button', class: 'aba', 'aria-current': abaAtiva === a.id ? 'page' : null, onclick: () => irPara(a.id) },
+  const botaoAba = (a, subitem = false) => h('button', { type: 'button', class: `aba${subitem ? ' aba-subitem' : ''}`, 'aria-current': abaAtiva === a.id ? 'page' : null, onclick: () => irPara(a.id) },
     h('span', { class: 'aba-icone' }, icone(a.icone, { tamanho: 24 }),
       a.id === 'decisoes' && n ? h('span', { class: 'contador', 'aria-label': `${n} esperando sua decisão` }, n > 9 ? '9+' : String(n)) : null),
     h('span', { class: 'aba-nome' }, a.nome));
@@ -379,7 +380,10 @@ function render() {
           h('img', { class: 'logo logo-claro', src: 'marca/logo-claro.png', alt: 'Level Up', width: 150, height: 42 }),
           h('img', { class: 'logo logo-escuro', src: 'marca/logo-escuro.png', alt: 'Level Up', width: 150, height: 42 }),
           h('small', {}, 'Games Up')),
-        h('nav', { class: 'nav-lateral', 'aria-label': 'Menu principal' }, ABAS.map(botaoAba)),
+        h('nav', { class: 'nav-lateral', 'aria-label': 'Menu principal' }, ABAS.filter(a => !['studio', 'eventos', 'thumbnails'].includes(a.id)).map(a =>
+          a.id === 'decisoes' ? h('div', { class: `nav-grupo-propostas${categoriaAberta ? ' com-filho-ativo' : ''}` },
+            botaoAba(a), h('div', { class: 'nav-submenu', role: 'group', 'aria-label': 'Categorias de propostas' },
+              ABAS.filter(a => ['studio', 'eventos', 'thumbnails'].includes(a.id)).map(a => botaoAba(a, true)))) : botaoAba(a))),
         h('div', { class: 'lateral-rodape' },
           h('img', { class: 'lateral-jogo', src: 'marca/jogo.png', alt: '', width: 36, height: 36, onerror: e => e.target.remove() }),
           h('div', {}, h('strong', {}, 'Escola Brasileira'), h('small', {}, estado.usuario?.nome || '')))),
@@ -398,7 +402,7 @@ function render() {
             novosAvisos(listarAvisos(estado.dados), lerAvisosLidos(estado.usuario)).length
               ? h('span', { class: 'contador' }, String(Math.min(99, novosAvisos(listarAvisos(estado.dados), lerAvisosLidos(estado.usuario)).length))) : null))),
         topo, conteudo),
-      h('nav', { class: 'barra-abas', 'aria-label': 'Menu principal' }, ABAS.filter(a => PRINCIPAIS_CELULAR.includes(a.id)).map(botaoAba), menuMais)));
+      h('nav', { class: 'barra-abas', 'aria-label': 'Menu principal' }, ABAS.filter(a => PRINCIPAIS_CELULAR.includes(a.id)).map(a => botaoAba(a)), menuMais)));
   if (render.mesmaTela) window.scrollTo(0, rolagem);
   render.mesmaTela = true;
   atualizarIndicador();

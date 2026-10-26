@@ -161,12 +161,24 @@ label { display: block; font-weight: 650; font-size: .92rem; margin: 10px 0 6px;
   .logo { width: 150px; height: auto; }
   .logo-claro { display: none; }
   .nav-lateral { display: flex; flex-direction: column; gap: 4px; }
-  .nav-lateral .aba { flex-direction: row; justify-content: flex-start; gap: 10px; color: #c9c8c3; padding: 8px 10px; min-height: 48px; }
-  .nav-lateral .aba-icone { width: 36px; height: 36px; border-radius: 12px; }
+  .nav-lateral .aba { flex-direction: row; justify-content: flex-start; gap: 10px; width: 100%; color: #c9c8c3; padding: 8px 10px; min-height: 48px; text-align: left; }
+  .nav-lateral .aba-icone { width: 36px; height: 36px; border-radius: 12px; flex: none; }
+  .nav-lateral .aba-icone > svg { width: 20px; height: 20px; }
   .nav-lateral .aba-nome { font-size: .98rem; }
   .nav-lateral .aba:hover { background: rgba(255, 255, 255, .06); }
   .nav-lateral .aba[aria-current="page"] { color: #fff; background: rgba(103, 0, 191, .45); }
   .nav-lateral .aba[aria-current="page"] .aba-icone { background: #fdd001; color: #1b1b1a; }
+  /* Categorias pertencem a Propostas; somente a página atual recebe destaque pleno. */
+  .nav-lateral .nav-grupo-propostas { min-width: 0; }
+  .nav-lateral .nav-submenu { display: flex; flex-direction: column; gap: 2px; margin: 4px 0 6px 16px; padding-left: 8px; border-left: 1px solid rgba(207, 166, 255, .22); }
+  .nav-lateral .aba-subitem { min-height: 44px; gap: 8px; padding: 8px 9px; border-radius: 10px; }
+  .nav-lateral .aba-subitem .aba-icone { width: 28px; height: 28px; border-radius: 8px; }
+  .nav-lateral .aba-subitem .aba-nome { font-size: .9rem; white-space: nowrap; }
+  .nav-lateral .nav-grupo-propostas.com-filho-ativo > .aba { color: #d5b8f5; background: rgba(103, 0, 191, .14); }
+  .nav-lateral .nav-grupo-propostas.com-filho-ativo > .aba .aba-icone { color: #cfa6ff; background: transparent; }
+  .nav-lateral .aba-subitem[aria-current="page"] { box-shadow: inset 3px 0 #fdd001; }
+  .nav-lateral .aba-subitem[aria-current="page"] .aba-icone { background: rgba(253, 208, 1, .12); color: #fdd001; }
+  .nav-lateral .aba:focus-visible { outline: 2px solid #fdd001; outline-offset: 2px; }
   .nav-lateral .contador { border-color: #1b1b1a; right: -6px; }
   .lateral-rodape { margin-top: auto; display: flex; align-items: center; gap: 10px; padding: 12px 8px 0; border-top: 1px solid rgba(255, 255, 255, .1); }
   .lateral-rodape img { width: 36px; height: 36px; border-radius: 10px; }

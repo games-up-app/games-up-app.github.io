@@ -1,8 +1,8 @@
 {
-  "revisao": "075b774c343416c162286e43901a3b9cfd2f07e2",
+  "revisao": "96655e8ec43d50b1a744871df12a5b1c12d1beea",
   "arquivos": {
     "aparelhos-autorizados.json": "50481e94f491dbc3bcc8797aede84768ecd12a5a1094365057ad6d882f88a1cf",
-    "app.js": "48e02be86d4b6e8a0dba8e4dfcdc8bd38327c6458e3aa3b5169d288a37c674a3",
+    "app.js": "0ae4bc64f678ffbb3b9860fcee5714e51a210fac1d146481bb9da379bb39c860",
     "config.js": "7575f0d75b73768ef5209c4d0c9c83a83723a23fca7b8ae6c4e1c59ebde45bdb",
     "estilos/andamento.css": "ed06a200660edd82b652d6c2d96350acaeb617f48bcf427f7908cd3543fb36d2",
     "estilos/avisos.css": "797e4290da6ce44c827931b105d17f474a2222112fef41b99d87610982cd4ed9",
@@ -16,7 +16,7 @@
     "icones/icone-512.png": "86f2b1870c7f5c1d1a115aca73ad3048d8486660352e3bafe325df621e20d03a",
     "icones/icone-maskable-512.png": "3aaf799585d6bb1dcc81017e5d9f02aa383eb2883113c54f8564f80996235926",
     "icones/icone.svg": "42957cfef7d72a605cb94c74e7b304e5d7caf00ec1cd0100a75d3583256ef777",
-    "index.html": "a26ef92c4f71c81f5f71a279046242d4626e49962e7b72e9339c0ca820207b02",
+    "index.html": "4723eee749f87f7729d16f7babc6479c91b1c1e2f1e99c9a65a155ca22866bfe",
     "manifest.webmanifest": "085f575b37e10084063f41fd84b7f8b9e2e3bcf42b36b6a6cbd2230dde79e791",
     "marca/claude.ico": "525d5c063365f7656ba0fe8b9165742c4874e70852d9bed7153b6faca8663a02",
     "marca/codex.svg": "cacff8e3a710f72a9ef19a9bfbe67871553db5b746fc509b62fec7fd2eae9df6",
@@ -44,7 +44,7 @@
     "nucleo/sincronizacao.js": "febd085cfd2c20f18600e301f11b74ed726ee5879313bdc7e3cc5d17fd682483",
     "nucleo/vapid.js": "b60f5c3e84dffd3886ae8b08d236d024be7828606da38b01c2166efd8153b492",
     "push-config.json": "ffe0b62d8381c9243ffc0e5595bc2f6d565979f4d6777a12a13ed2d3b50e5f74",
-    "styles.css": "4db41d38d4ea807beace70541901fade4a4497bd407b5be238724ff03799783e",
+    "styles.css": "8a9844a301a573b373755933fa13b4088f70cfc3295dede8658c9a8a523708e0",
     "sw.js": "eb117943cbc5f077bd2a9262ea2551cb16944ee0ac3a9214da267ccb53b79290",
     "telas/ajustes.js": "b7cd24a32bc5882201ebfda3fc033f7b6fbab3c807b70b6525ef723965318c7b",
     "telas/andamento.js": "e9a555a7ec1a32e69e22cb0cd6293b83548a7bf0da13dc1994d8f1099a750700",
