@@ -2,7 +2,7 @@
 // A chave privada é criada no aparelho do proprietário como NÃO exportável:
 // nem o painel, nem a automação, nem quem tem acesso ao repositório consegue copiá-la.
 // O workflow de publicação confere a assinatura com a chave pública (lib/trava.mjs).
-import { canonico } from './canonico.js?v=20261025-categorias4';
+import { canonico } from './canonico.js?v=20261026-automacao1';
 
 const sutil = () => globalThis.crypto.subtle;
 const ALG = { name: 'ECDSA', namedCurve: 'P-256' };

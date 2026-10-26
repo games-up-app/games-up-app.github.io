@@ -445,6 +445,13 @@ button.atividade { cursor: pointer; }
 .fonte { display: flex; gap: 8px; align-items: flex-start; }
 .fonte .icone { margin-top: 4px; color: var(--muted); }
 .linha-saude, .linha-agenda { display: flex; align-items: center; gap: 12px; padding: 12px; box-shadow: none; }
+/* No celular, o status fica abaixo do texto para não estreitar os detalhes. */
+@media (max-width: 699px) {
+  .linha-saude { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: start; gap: 6px 10px; padding: 10px; }
+  .linha-saude > .atv-icone { width: 32px; height: 32px; grid-column: 1; grid-row: 1; }
+  .linha-saude > .atv-texto { min-width: 0; grid-column: 2; grid-row: 1; overflow-wrap: anywhere; }
+  .linha-saude > .chip { grid-column: 2; grid-row: 2; justify-self: start; max-width: 100%; white-space: normal; }
+}
 .agenda-dia { min-width: 74px; font-weight: 800; color: var(--brand-text); text-transform: capitalize; }
 .linha-evento { display: flex; flex-direction: column; gap: 2px; padding: 12px; box-shadow: none; }
 .evento-topo { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }

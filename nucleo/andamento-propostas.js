@@ -1,6 +1,6 @@
 // Leitura do Andamento por proposta, fora do Explorer. Não altera registros ou aprovações.
-import { avaliarPresenca } from './presenca.js?v=20261025-categorias4';
-import { estadoPropostaPublicacao } from './estado-publicacao.js?v=20261025-categorias4';
+import { avaliarPresenca } from './presenca.js?v=20261026-automacao1';
+import { estadoPropostaPublicacao } from './estado-publicacao.js?v=20261026-automacao1';
 
 const APROVADAS = new Set(['APROVADA PARA DESENVOLVIMENTO', 'EM DESENVOLVIMENTO', 'EM TESTES', 'AGUARDANDO AUTORIZAÇÃO FINAL', 'APROVADA PARA PUBLICAÇÃO', 'PUBLICADA']);
 const ACOMPANHAVEIS = new Set([...APROVADAS, 'BLOQUEADA', 'DEVOLVIDA PARA AJUSTES']);

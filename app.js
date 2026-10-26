@@ -4,27 +4,27 @@
 // A publicação no jogo exige a assinatura feita pela chave deste aparelho (ver nucleo/).
 // Este arquivo cuida de: entrar, carregar os dados, barra de abas, notificações e o objeto ctx.
 // Cada tela fica em painel/telas/*.js e só usa o ctx.
-import { CONFIG } from './config.js?v=20261025-categorias4';
-import { RepoGitHub } from './nucleo/github.js?v=20261025-categorias4';
-import { criarApi } from './nucleo/api.js?v=20261025-categorias4';
-import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js?v=20261025-categorias4';
-import { chavePublicaVapid } from './nucleo/vapid.js?v=20261025-categorias4';
-import { ativarNoAparelho, diagnosticarNotificacoes } from './nucleo/notificacoes.js?v=20261025-categorias4';
-import { criarSincronizacao } from './nucleo/sincronizacao.js?v=20261025-categorias4';
-import { estadoConfirmacaoSaida } from './nucleo/confirmacao-saida.js?v=20261025-categorias4';
-import { carregarKitEvento } from './nucleo/kit-evento.js?v=20261025-categorias4';
-import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js?v=20261025-categorias4';
-import { ctx } from './ui/contexto.js?v=20261025-categorias4';
-import { telaInicio } from './telas/inicio.js?v=20261025-categorias4';
-import { telaDecisoes, telaRobloxStudio, telaEventos, telaThumbnails } from './telas/decisoes.js?v=20261025-categorias4';
-import { telaNumeros } from './telas/numeros.js?v=20261025-categorias4';
-import { telaPesquisa } from './telas/pesquisa.js?v=20261025-categorias4';
-import { telaAjustes } from './telas/ajustes.js?v=20261025-categorias4';
-import { telaTarefas } from './telas/tarefas.js?v=20261025-categorias4';
-import { telaAndamento } from './telas/andamento.js?v=20261025-categorias4';
-import { telaIdeias } from './telas/ideias.js?v=20261025-categorias4';
-import { telaAvisos } from './telas/avisos.js?v=20261025-categorias4';
-import { listarAvisos, novosAvisos, lerAvisosLidos } from './nucleo/central-avisos.js?v=20261025-categorias4';
+import { CONFIG } from './config.js?v=20261026-automacao1';
+import { RepoGitHub } from './nucleo/github.js?v=20261026-automacao1';
+import { criarApi } from './nucleo/api.js?v=20261026-automacao1';
+import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js?v=20261026-automacao1';
+import { chavePublicaVapid } from './nucleo/vapid.js?v=20261026-automacao1';
+import { ativarNoAparelho, diagnosticarNotificacoes } from './nucleo/notificacoes.js?v=20261026-automacao1';
+import { criarSincronizacao } from './nucleo/sincronizacao.js?v=20261026-automacao1';
+import { estadoConfirmacaoSaida } from './nucleo/confirmacao-saida.js?v=20261026-automacao1';
+import { carregarKitEvento } from './nucleo/kit-evento.js?v=20261026-automacao1';
+import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js?v=20261026-automacao1';
+import { ctx } from './ui/contexto.js?v=20261026-automacao1';
+import { telaInicio } from './telas/inicio.js?v=20261026-automacao1';
+import { telaDecisoes, telaRobloxStudio, telaEventos, telaThumbnails } from './telas/decisoes.js?v=20261026-automacao1';
+import { telaNumeros } from './telas/numeros.js?v=20261026-automacao1';
+import { telaPesquisa } from './telas/pesquisa.js?v=20261026-automacao1';
+import { telaAjustes } from './telas/ajustes.js?v=20261026-automacao1';
+import { telaTarefas } from './telas/tarefas.js?v=20261026-automacao1';
+import { telaAndamento } from './telas/andamento.js?v=20261026-automacao1';
+import { telaIdeias } from './telas/ideias.js?v=20261026-automacao1';
+import { telaAvisos } from './telas/avisos.js?v=20261026-automacao1';
+import { listarAvisos, novosAvisos, lerAvisosLidos } from './nucleo/central-avisos.js?v=20261026-automacao1';
 
 const estado = { usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null, pushAtivo: null };
 // Os dados ficam na organização games-up-app: o token precisa ter ela como "Resource owner".

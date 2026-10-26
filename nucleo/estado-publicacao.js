@@ -15,15 +15,17 @@ export function horarioBrasilia(valor) {
 }
 
 function previsao(l, config, agora) {
-  const hora = l.urgente ? l.horario : config.horarioPublicacao;
-  const envio = /^\d{4}-\d{2}-\d{2}$/.test(l.dataAlvo || '') && /^([01]\d|2[0-3]):[0-5]\d$/.test(hora || '')
-    ? `${l.dataAlvo}T${hora}:00-03:00` : null;
+  const plano = l.tipo === 'thumbnail' && l.thumbnailApi?.versao === 1 ? l.thumbnailApi : null;
+  const hora = plano ? plano.horario : l.urgente ? l.horario : config.horarioPublicacao;
+  const dataAlvo = plano ? plano.dataAlvo : l.dataAlvo;
+  const envio = /^\d{4}-\d{2}-\d{2}$/.test(dataAlvo || '') && /^([01]\d|2[0-3]):[0-5]\d$/.test(hora || '')
+    ? `${dataAlvo}T${hora}:00-03:00` : null;
   const data = l.tipo === 'evento' ? l.evento?.inicio : envio;
   const d = instante(data);
   if (!d) return { texto: 'Sem horário confirmado. Acompanhe o Andamento.', passou: false };
   const passou = d.getTime() <= agora.getTime();
   const rotulo = l.tipo === 'evento' ? 'Início previsto do evento' : 'Horário previsto';
-  return { texto: `${rotulo}${passou ? ' já passou' : ''}: ${horarioBrasilia(data)}.${passou ? ' Sem novo horário confirmado.' : ' O horário não confirma o envio.'}`, passou };
+  return { texto: `${rotulo}${passou ? ' já passou' : ''}: ${horarioBrasilia(data)}.${passou ? ' Sem novo horário confirmado.' : ' O horário não confirma o envio.'}`, passou, futuro: !passou };
 }
 
 // O estado declarado precisa de um registro da entrega. Autorização e disparo
@@ -48,6 +50,41 @@ function tarefaIntegracao(l, config) {
     && t.status !== 'CONCLUÍDA' && (!t.propostaId || l.propostaIds?.includes(t.propostaId)));
 }
 
+// O backend só registra agendada após conferir conexão e plano. O manifesto
+// sozinho não atesta integração ativa; estes textos não validam nem executam a API.
+function estadoThumbnail(l, q) {
+  const estado = l.automacaoThumbnail?.estado;
+  const plano = l.thumbnailApi?.versao === 1 && l.thumbnailApi.configuracaoId && l.thumbnailApi.substituirId;
+  const conferir = estado === 'aguardando_conferencia' || estado === 'publicada'
+    || l.disparoPublicacao?.em && !['reservada', 'enviando'].includes(estado);
+  if (estado === 'falha' || conferir) return {
+    titulo: estado === 'falha' ? 'Troca da thumbnail falhou · equipe vai conferir' : 'Troca da thumbnail aguarda conferência',
+    proximaAcao: 'A equipe precisa conferir o resultado no Roblox e registrar a confirmação antes de concluir ou repetir a troca. Use o botão Ver Andamento para acompanhar a conferência da equipe.',
+    acaoCurta: 'Equipe: conferir a troca no Roblox', requerAtencao: true,
+  };
+  if (plano && ['reservada', 'enviando'].includes(estado)) return {
+    titulo: estado === 'reservada' ? 'Troca da thumbnail reservada' : 'Thumbnail em envio · aguarda confirmação',
+    proximaAcao: 'A automação registrou o início da troca. A equipe acompanha o resultado e ainda precisa confirmar a aplicação da imagem no Roblox. Acompanhe no Andamento.',
+    acaoCurta: 'Equipe: acompanhar e confirmar a troca', requerAtencao: false,
+  };
+  if (plano && estado === 'agendada' && (q.futuro || q.passou)) return {
+    titulo: q.futuro ? 'Troca automática agendada · aguarda horário' : 'Troca automática pendente · aguarda confirmação',
+    proximaAcao: q.futuro
+      ? 'A conexão e o plano de troca foram confirmados. A automação aguarda o horário permitido; a equipe acompanha e confirma o resultado no Roblox.'
+      : 'O horário permitido chegou, mas a troca ainda não foi confirmada. A equipe precisa acompanhar o envio e conferir o resultado no Roblox. Acompanhe no Andamento.',
+    acaoCurta: q.futuro ? 'Aguardar horário; a equipe acompanha' : 'Equipe: conferir o envio e a troca', requerAtencao: q.passou,
+  };
+  return {
+    titulo: 'A equipe está preparando a troca automática',
+    proximaAcao: !plano || estado === 'aguardando_plano'
+      ? 'A equipe precisa identificar a imagem que será substituída pela API e concluir o plano de troca, preservando as imagens protegidas. Acompanhe no Andamento.'
+      : estado === 'aguardando_chave'
+        ? 'A equipe precisa concluir a configuração da conexão antes de confirmar o agendamento da troca. Acompanhe no Andamento.'
+        : 'A equipe precisa confirmar a conexão, o plano de troca e o horário permitido antes de confirmar o agendamento. Acompanhe no Andamento.',
+    acaoCurta: 'Equipe: preparar e conferir a troca automática', requerAtencao: true,
+  };
+}
+
 /** Estado informativo, sem inferir sucesso a partir de autorização, horário ou disparo. */
 export function estadoPublicacao(l = {}, config = {}, agora = new Date()) {
   const publicada = publicacaoConfirmada(l);
@@ -58,10 +95,11 @@ export function estadoPublicacao(l = {}, config = {}, agora = new Date()) {
   const testesOk = l.testes?.resultado === 'aprovado';
   const q = previsao(l, config, agora);
   const integracao = tarefaIntegracao(l, config);
+  const thumbnail = l.tipo === 'thumbnail' ? estadoThumbnail(l, q) : null;
   const modo = l.tipo === 'evento'
     ? `Evento: anuncia a atualização na página do Roblox; não envia o arquivo do jogo. ${integracao ? 'A API experimental foi verificada, mas a integração de criação ainda não está ativa (T-008). ' : ''}Enquanto a API estiver indisponível, a criação manual está liberada no Creator Hub, pelo kit do evento. É preciso registrar o ID e o link reais para confirmar a criação.`
     : l.tipo === 'thumbnail'
-      ? 'Thumbnail: a aplicação da imagem depende do fluxo confirmado pela equipe, a partir da data e do horário permitidos. O tipo do pacote não comprova envio automático nem aplicação manual.'
+      ? 'Thumbnail: a aplicação da imagem depende do fluxo confirmado pela equipe, a partir da data e do horário permitidos. O plano de troca, sozinho, não comprova conexão ativa nem aplicação da imagem.'
       : 'Jogo: após sua autorização, a automação ainda precisa conferir as condições e enviar o arquivo ao Roblox. A confirmação vem depois do envio.';
   let titulo, proximaAcao, acaoCurta, etapa = 0, tom = 'relevante', icone = 'martelo';
   if (publicada) {
@@ -83,14 +121,13 @@ export function estadoPublicacao(l = {}, config = {}, agora = new Date()) {
   } else if (autorizada) {
     etapa = 2; tom = 'warn'; icone = 'relogio';
     titulo = l.tipo === 'evento' ? (integracao ? 'Integração do evento pendente' : 'Criação do evento pendente')
-      : l.disparoPublicacao?.em ? 'Envio solicitado · aguarda confirmação'
-        : l.tipo === 'thumbnail' ? 'Aplicação da thumbnail pendente' : 'Autorizada · aguarda horário/envio';
+      : thumbnail ? thumbnail.titulo : l.disparoPublicacao?.em ? 'Envio solicitado · aguarda confirmação' : 'Autorizada · aguarda horário/envio';
     acaoCurta = l.tipo === 'evento' ? q.passou ? 'Revisar início e abrir kit manual' : 'Você: abrir kit para criação manual'
-      : l.tipo === 'thumbnail' ? 'Equipe: aplicar e confirmar a imagem' : 'Acompanhar envio e confirmação';
+      : thumbnail ? thumbnail.acaoCurta : 'Acompanhar envio e confirmação';
     proximaAcao = l.tipo === 'evento'
       ? `${q.passou ? 'A equipe precisa revisar o início previsto, que já passou, antes de criar o evento. As datas originais foram mantidas no kit; não há novo horário confirmado. ' : 'É preciso criar o evento e registrar seu ID e link reais. '}${integracao ? 'A integração pela API ainda não está ativa (T-008). ' : ''}A criação manual está liberada: abra o Kit para criar evento e copie o conteúdo conferido. A criação no Roblox ainda não foi confirmada.`
-      : l.tipo === 'thumbnail'
-        ? 'A equipe precisa aplicar a thumbnail no horário permitido e registrar a confirmação. Acompanhe no Andamento.'
+      : thumbnail
+        ? thumbnail.proximaAcao
         : 'Acompanhe o envio e a confirmação no Andamento. Sua autorização foi registrada; ainda falta a publicação ser confirmada.';
     if (config.lancamentosPausados) {
       titulo = 'Autorizada · publicações pausadas';
@@ -121,7 +158,7 @@ export function estadoPublicacao(l = {}, config = {}, agora = new Date()) {
   const devolucao = [...(l.historico || [])].reverse().find(e => e.acao === 'devolver');
   return {
     requerAtencao: !publicada && (bloqueada || devolvida || l.status === PUBLICADA ||
-      autorizada && (q.passou || !!integracao || !!config.lancamentosPausados || instante(l.autorizacao?.dados?.expiraEm)?.getTime() <= agora.getTime())),
+      autorizada && (q.passou || !!integracao || !!thumbnail?.requerAtencao || !!config.lancamentosPausados || instante(l.autorizacao?.dados?.expiraEm)?.getTime() <= agora.getTime())),
     titulo, tom, icone, passos, etapa, proximaAcao, acaoCurta, modo, marcos, confirmada: publicada,
     status: l.status === PUBLICADA && !publicada ? 'CONFIRMAÇÃO PENDENTE' : l.status,
     horario: publicada ? `Publicação confirmada: ${horarioBrasilia(l.publicadoEm) || 'horário não registrado'}.` : q.texto,

@@ -1,10 +1,10 @@
 // Histórico visual do desenvolvimento. Só exibe evidências registradas, sem simular capturas.
-import { h, icone, chip, abrirModal, abrirFolha } from '../ui/componentes.js?v=20261025-categorias4';
-import { ctx } from '../ui/contexto.js?v=20261025-categorias4';
-import { semanaDe } from '../nucleo/andamento.js?v=20261025-categorias4';
-import { revisaoDaEtapa, podeRevisarEntrega } from '../nucleo/revisao-etapas.js?v=20261025-categorias4';
-import { dataHoraBrasilia, rotuloEtapa } from '../nucleo/central-avisos.js?v=20261025-categorias4';
-import { dataBR } from './comum.js?v=20261025-categorias4';
+import { h, icone, chip, abrirModal, abrirFolha } from '../ui/componentes.js?v=20261026-automacao1';
+import { ctx } from '../ui/contexto.js?v=20261026-automacao1';
+import { semanaDe } from '../nucleo/andamento.js?v=20261026-automacao1';
+import { revisaoDaEtapa, podeRevisarEntrega } from '../nucleo/revisao-etapas.js?v=20261026-automacao1';
+import { dataHoraBrasilia, rotuloEtapa } from '../nucleo/central-avisos.js?v=20261026-automacao1';
+import { dataBR } from './comum.js?v=20261026-automacao1';
 import { agruparAndamento, estadoAndamento } from '../nucleo/andamento-propostas.js?v=20261025-propostas1';
 
 const CATEGORIAS = { cenario: ['Cenário', 'imagem'], script: ['Scripts', 'tarefas'], interface: ['Interface', 'celular'], teste: ['Testes', 'qualidade'], toolbox: ['Toolbox', 'martelo'], geral: ['Geral', 'relogio'] };

@@ -1,9 +1,25 @@
 // Tela Ajustes: conta, publicações (pausa, dia e horário), chave de autorização, celular e atalhos.
-import { h, icone, chip, interruptor, botaoCopiar, abrirFolha } from '../ui/componentes.js?v=20261025-categorias4';
-import { ctx } from '../ui/contexto.js?v=20261025-categorias4';
-import { dataBR, haQuanto, cabecalhoSecao, segmentado, campo, chipStatus, cardBotao, rotuloStatus } from './comum.js?v=20261025-categorias4';
+import { h, icone, chip, interruptor, botaoCopiar, abrirFolha } from '../ui/componentes.js?v=20261026-automacao1';
+import { ctx } from '../ui/contexto.js?v=20261026-automacao1';
+import { derivarSaudeAutomacao } from '../nucleo/saude-automacao.js?v=20261026-automacao1';
+import { dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261026-automacao1';
+import { dataBR, cabecalhoSecao, segmentado, campo, chipStatus, cardBotao, rotuloStatus } from './comum.js?v=20261026-automacao1';
 
 const d = () => ctx.estado.dados || {};
+
+// Atualiza somente a saúde informativa; preserva o rascunho dos ajustes de publicação.
+function acompanharSaude(elemento, construir) {
+  let anterior = JSON.stringify(derivarSaudeAutomacao(d()));
+  const timer = setInterval(() => {
+    if (!elemento.isConnected) { clearInterval(timer); return; }
+    const atual = JSON.stringify(derivarSaudeAutomacao(d()));
+    if (atual !== anterior) {
+      anterior = atual;
+      elemento.replaceChildren(...construir().childNodes);
+    }
+  }, 30_000);
+  return elemento;
+}
 
 // Rascunho das escolhas de publicação (só grava ao tocar em Salvar).
 let rascunho = null;
@@ -135,17 +151,24 @@ function folhaAgenda() {
   const c = d().config || {};
   abrirFolha({ titulo: 'Agenda da semana', conteudo: h('div', { class: 'lista-cards' }, (c.cronograma || []).map(x => h('div', { class: 'card linha-agenda' },
     h('span', { class: 'agenda-dia' }, x.dia),
-    h('div', { class: 'atv-texto' }, h('strong', {}, x.atividade), h('span', { class: 'sinc' }, x.automatico)))) ) });
+    h('div', { class: 'atv-texto' }, h('strong', {}, x.atividade), h('span', { class: 'sinc' }, `Planejado: ${x.automatico || 'sem horário informado'}. Não comprova execução.`)))) ) });
 }
-const nomeAutomacao = n => ({ 'coleta-diaria': 'Coleta dos números', 'relatorio-semanal': 'Relatório semanal', 'relatorio-preliminar': 'Relatório preliminar', 'diagnostico-segunda': 'Diagnóstico de segunda' }[n] || n.replace(/-/g, ' '));
-function folhaAutomacoes() {
+function conteudoAutomacoes() {
   const s = d()['saude-agendamentos'] || {};
-  abrirFolha({ titulo: 'Automações', conteudo: h('div', {},
+  const saude = derivarSaudeAutomacao(d());
+  return h('div', {},
     s.observacao ? h('div', { class: 'faixa info' }, icone('lampada', { tamanho: 20 }), h('span', {}, s.observacao)) : null,
-    h('div', { class: 'lista-cards' }, Object.entries(s.tarefas || {}).map(([n, v]) => h('div', { class: 'card linha-saude' },
-      h('span', { class: `atv-icone tom-${v.status === 'ok' ? 'verde' : v.status === 'falhou' ? 'vermelho' : 'cinza'}` }, icone(v.status === 'ok' ? 'ok' : v.status === 'falhou' ? 'alerta' : 'relogio', { tamanho: 20 })),
-      h('div', { class: 'atv-texto' }, h('strong', {}, nomeAutomacao(n)), h('span', { class: 'sinc' }, v.ultimaExecucao ? `Última vez ${haQuanto(v.ultimaExecucao)}` : 'Ainda não rodou'), v.cron ? h('span', { class: 'sinc' }, v.cron) : null),
-      chipStatus(v.status))))) });
+    h('p', { class: 'sinc' }, `${saude.titulo} · ${saude.resumo}`),
+    h('div', { class: 'lista-cards' }, saude.rotinas.map(r => h('div', { class: 'card linha-saude' },
+      h('span', { class: `atv-icone tom-${r.atencao ? 'vermelho' : 'verde'}` }, icone(r.atencao ? 'alerta' : 'ok', { tamanho: 20 })),
+      h('div', { class: 'atv-texto' }, h('strong', {}, r.nome), h('span', { class: 'sinc' }, `Motor: ${r.motor}`),
+        h('span', { class: 'sinc' }, r.ultimaExecucao ? `Última execução: ${dataHoraBrasilia(r.ultimaExecucao)}` : 'Sem última execução comprovada'),
+        r.proximaExecucao ? h('span', { class: 'sinc' }, `Próxima janela planejada: ${dataHoraBrasilia(r.proximaExecucao)}`) : null,
+        h('span', { class: 'sinc' }, r.detalhe)),
+      chip(r.rotulo, { tom: r.atencao ? 'warn' : 'ok', iconeNome: r.atencao ? 'alerta' : 'ok' })))));
+}
+function folhaAutomacoes() {
+  abrirFolha({ titulo: 'Automações', conteudo: acompanharSaude(conteudoAutomacoes(), conteudoAutomacoes) });
 }
 function folhaHistorico() {
   const eventos = [...(d().auditoria || [])].reverse();
@@ -178,21 +201,21 @@ function folhaAcesso() {
   rodape: h('button', { type: 'button', class: 'btn perigo grande', onclick: () => ctx.sair() }, icone('fechar', { tamanho: 18 }), 'Sair deste aparelho') });
 }
 
-function atalhos() {
-  const saude = Object.values(d()['saude-agendamentos']?.tarefas || {});
-  const falhas = saude.filter(t => t.status === 'falhou').length;
+function atalhos(acompanhar = true) {
+  const saude = derivarSaudeAutomacao(d());
   const tarefas = (d().tarefas?.tarefas || []).filter(t => t.status !== 'CONCLUÍDA').length;
   const item = (ic, tom, titulo, sub, acao) => h('button', { type: 'button', class: 'item-menu', onclick: acao },
     h('span', { class: `resumo-icone tom-${tom}` }, icone(ic, { tamanho: 20 })),
     h('span', { class: 'atalho-texto' }, h('strong', {}, titulo), h('span', {}, sub)),
     icone('direita', { tamanho: 20 }));
-  return h('section', { class: 'card card-menu' },
+  const secao = h('section', { class: 'card card-menu' },
     item('tarefas', 'roxo', 'Tarefas', `${tarefas} em aberto`, () => ctx.irPara('tarefas')),
     item('calendario', 'azul', 'Agenda da semana', 'O que acontece em cada dia', folhaAgenda),
-    item(falhas ? 'alerta' : 'escudo', falhas ? 'vermelho' : 'verde', 'Automações', falhas ? `${falhas} com falha` : `${saude.length} agendadas`, folhaAutomacoes),
+    item(saude.atencao ? 'alerta' : 'escudo', saude.atencao ? 'vermelho' : 'verde', 'Automações', `${saude.titulo} · ${saude.resumo}`, folhaAutomacoes),
     item('decisoes', 'laranja', 'Histórico', 'Publicações e decisões registradas', folhaHistorico),
     item('qualidade', 'cinza', 'Custos e limites', 'Sem cobrança automática', folhaCustos),
     item('jogadores', 'amarelo', 'Seu acesso', 'Token e saída deste aparelho', folhaAcesso));
+  return acompanhar ? acompanharSaude(secao, () => atalhos(false)) : secao;
 }
 
 /** Modo Equipe: explica o que a pessoa pode fazer (ver e comentar) e quem decide. */

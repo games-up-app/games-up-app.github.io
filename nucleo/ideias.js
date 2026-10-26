@@ -1,5 +1,5 @@
 // Regras compartilhadas para sugestões do dono. Uma ideia nunca é uma aprovação.
-import { limparTexto, ErroRegra } from './regras.js?v=20261025-categorias4';
+import { limparTexto, ErroRegra } from './regras.js?v=20261026-automacao1';
 export const ASSUNTOS_IDEIA = { thumbnail: 'Thumbnail', descricao: 'Descrição do jogo', nome: 'Nome do jogo', melhoria: 'Melhoria no jogo', interface: 'Interface', evento: 'Evento', outro: 'Outra ideia' };
 export const STATUS_IDEIA = { nova: 'Recebida', analise: 'Em análise', respondida: 'Respondida', proposta: 'Virou proposta' };
 export function validarIdeia(c) {

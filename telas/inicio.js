@@ -1,15 +1,30 @@
 // Tela Início: boas-vindas, jogo ao vivo, semana, notícia do dia, o que precisa de você e resumo.
 // Subpágina "noticias" (estado.sub.inicio === 'noticias'): todas as notícias com filtros.
-import { h, icone, chip, iconeDoTipo, abrirFolha } from '../ui/componentes.js?v=20261025-categorias4';
-import { ctx } from '../ui/contexto.js?v=20261025-categorias4';
-import { resumoAtualizacao, listarAvisos, novosAvisos, lerAvisosLidos, marcarAvisoLido, dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261025-categorias4';
-import { avaliarPresenca } from '../nucleo/presenca.js?v=20261025-categorias4';
+import { h, icone, chip, iconeDoTipo, abrirFolha } from '../ui/componentes.js?v=20261026-automacao1';
+import { ctx } from '../ui/contexto.js?v=20261026-automacao1';
+import { resumoAtualizacao, listarAvisos, novosAvisos, lerAvisosLidos, marcarAvisoLido, dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261026-automacao1';
+import { avaliarPresenca } from '../nucleo/presenca.js?v=20261026-automacao1';
+import { derivarSaudeAutomacao } from '../nucleo/saude-automacao.js?v=20261026-automacao1';
 import {
   FUSO, num, pct, compacto, dataBR, horaBR, haQuanto, textoCurto, urlSegura, botaoLink, imagemExterna, miniaturaIcone,
   cabecalhoSecao, botaoTexto, topoSubpagina, filtrosChips, campo, blocoNumero, miniGrafico, chipStatus, cardClicavel, cardBotao,
-} from './comum.js?v=20261025-categorias4';
+} from './comum.js?v=20261026-automacao1';
 
 const d = () => ctx.estado.dados || {};
+
+// Prazos e presença expiram mesmo quando o SHA dos dados não muda. Atualiza só estes blocos.
+function acompanharSaude(elemento, construir) {
+  let anterior = JSON.stringify(derivarSaudeAutomacao(d()));
+  const timer = setInterval(() => {
+    if (!elemento.isConnected) { clearInterval(timer); return; }
+    const atual = JSON.stringify(derivarSaudeAutomacao(d()));
+    if (atual !== anterior) {
+      anterior = atual;
+      elemento.replaceChildren(...construir().childNodes);
+    }
+  }, 30_000);
+  return elemento;
+}
 
 // ------------------------------------------------------------------ datas no fuso de Brasília
 const NOMES_DIA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -86,23 +101,18 @@ function atividadesDoDia(ymd) {
     (dados.lancamentos?.lancamentos || []).filter(l => l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL').forEach(l =>
       add('Hoje', `Autorizar a atualização ${l.id}`, 'autorizacao', 'Você', (l.changelog || []).join(' · ') || null, () => ctx.irPara('decisoes', { tipo: 'lancamento', id: l.id }), true));
     const atual = dados.executor?.trabalhoAtual;
-    if (atual) add('Agora', `Em desenvolvimento: ${atual.propostaId || 'trabalho aprovado'}`, 'desenvolvimento', 'Claude', atual.etapa || null);
+    if (atual && derivarSaudeAutomacao(dados).rotinas.find(r => r.id === 'executor-pc')?.trabalhoAtualConfirmado) add('Agora', `Trabalho registrado: ${atual.propostaId || 'trabalho aprovado'}`, 'desenvolvimento', 'Equipe', atual.etapa || null);
   }
   // Atualizações marcadas para este dia.
   (dados.lancamentos?.lancamentos || []).filter(l => l.dataAlvo === ymd && l.status !== 'PUBLICADA').forEach(l =>
     add(horarioPublicacao(), `Atualização ${l.id} vai para o jogo`, 'publicacao', 'GitHub', l.status === 'APROVADA PARA PUBLICAÇÃO' ? 'Já autorizada por você.' : 'Só vai se você autorizar antes.', null, true));
 
-  // Tarefas fixas de todo dia.
-  add('07:30', 'Notícias do dia', 'noticias', 'Claude', 'Novidades de Roblox, YouTube, TikTok e Instagram, com ideias para o jogo.');
-  add('De hora em hora', 'Números do jogo', 'monitoramento', 'GitHub', 'Jogadores online, visitas e jogos de escola parecidos.');
-
-  // Semana fixa.
-  if (wd === 1) {
-    add('09:00', 'Diagnóstico da semana', 'monitoramento', 'GitHub', 'Confere se tudo funcionou na semana passada.');
-    add('09:30', 'Pesquisa e propostas novas', 'pesquisa', 'Claude', 'Tendências da semana viram propostas com imagens para você decidir.');
-  }
-  if (wd === 6) add('08:00', 'Relatório semanal', 'relatorio', 'GitHub', 'Como o jogo foi na semana, o que deu certo e o que não deu.');
-  if (wd === 0) add('09:00', 'Relatório preliminar', 'relatorio', 'GitHub', 'Primeira leitura depois da atualização. O resultado de verdade sai em 7 dias.');
+  // Exibe somente a próxima janela derivável do cron informado pela fonte, como planejamento.
+  derivarSaudeAutomacao(dados).rotinas.forEach(r => {
+    if (!r.proximaExecucao || hojeYMD(new Date(r.proximaExecucao)) !== ymd) return;
+    add(horaBR(r.proximaExecucao), `${r.nome} · planejado`, categoriaPorTexto(r.nome), r.motor === 'PC' ? 'Equipe' : 'Rotina na nuvem',
+      `${r.rotulo}. ${r.ultimaExecucao ? `Última execução comprovada: ${dataHoraBrasilia(r.ultimaExecucao)}.` : 'Nenhuma execução comprovada.'} ${r.detalhe}`);
+  });
   if (wd === diaPublicacao()) {
     const pausado = !!dados.config?.lancamentosPausados;
     add(horarioPublicacao(), pausado ? 'Publicação pausada' : 'Publicação no jogo', 'publicacao', 'GitHub',
@@ -113,7 +123,7 @@ function atividadesDoDia(ymd) {
     const dias = diasDoTexto(c.dia);
     if (!dias.includes(wd) || [0, 1, 6].includes(wd)) return;
     const hora = /(\d{1,2})h(\d{2})?/.exec(c.automatico || '');
-    add(hora ? `${hora[1].padStart(2, '0')}:${hora[2] || '00'}` : 'No dia', c.atividade, categoriaPorTexto(`${c.atividade} ${c.automatico}`), quemPorTexto(c.automatico || ''), c.automatico);
+    add(hora ? `${hora[1].padStart(2, '0')}:${hora[2] || '00'}` : 'No dia', `${c.atividade} · planejado`, categoriaPorTexto(`${c.atividade} ${c.automatico}`), quemPorTexto(c.automatico || ''), `Planejamento configurado; não comprova execução. ${c.automatico || ''}`);
   });
 
   const peso = it => (it.hora === 'Hoje' ? -2 : it.hora === 'Agora' ? -1 : /^\d\d:\d\d$/.test(it.hora) ? Number(it.hora.replace(':', '')) : 9999);
@@ -227,7 +237,7 @@ function calendario() {
     cabecalhoSecao('calendario', 'Sua semana'),
     h('div', { class: 'semana-grade' }, dias.map((ymd, i) => {
       const wd = diaSemana(ymd);
-      const its = atividadesDoDia(ymd).filter(x => !['07:30', 'De hora em hora'].includes(x.hora));
+      const its = atividadesDoDia(ymd);
       const pub = wd === diaPublicacao() && !d().config?.lancamentosPausados;
       const cats = [...new Set(its.map(x => x.cat))].slice(0, 3);
       return h('button', { type: 'button', class: `dia${i === 0 ? ' hoje' : ''}${pub ? ' publica' : ''}`, onclick: () => folhaDia(ymd), 'aria-label': `${i === 0 ? 'Hoje' : NOMES_DIA[wd]}, dia ${diaNum(ymd)}: ${its.length} atividades` },
@@ -393,28 +403,33 @@ function proximaPublicacao() {
   return somarDias(ymd, 7);
 }
 
-function folhaAutomacoes() {
+function conteudoAutomacoes() {
   const s = d()['saude-agendamentos'] || {};
-  const itens = Object.entries(s.tarefas || {});
-  abrirFolha({
-    titulo: 'Saúde das automações',
-    conteudo: h('div', {},
+  const saude = derivarSaudeAutomacao(d());
+  return h('div', {},
       s.observacao ? h('div', { class: 'faixa info' }, icone('lampada', { tamanho: 20 }), h('span', {}, s.observacao)) : null,
-      itens.length ? h('div', { class: 'lista-cards' }, itens.map(([nome, v]) => h('div', { class: 'card linha-saude' },
-        h('span', { class: `atv-icone tom-${v.status === 'ok' ? 'verde' : v.status === 'falhou' ? 'vermelho' : 'cinza'}` }, icone(v.status === 'ok' ? 'ok' : v.status === 'falhou' ? 'alerta' : 'relogio', { tamanho: 20 })),
-        h('div', { class: 'atv-texto' }, h('strong', {}, nomeAutomacao(nome)), h('span', { class: 'sinc' }, v.ultimaExecucao ? `Última vez ${haQuanto(v.ultimaExecucao)}` : 'Ainda não rodou'), v.cron ? h('span', { class: 'sinc' }, `Agenda: ${v.cron}`) : null),
-        chipStatus(v.status)))) : h('p', { class: 'sinc' }, 'Sem registros.')),
-  });
+      h('p', { class: 'sinc' }, `${saude.titulo} · ${saude.resumo}`),
+      h('div', { class: 'lista-cards' }, saude.rotinas.map(r => h('div', { class: 'card linha-saude' },
+        h('span', { class: `atv-icone tom-${r.atencao ? 'vermelho' : 'verde'}` }, icone(r.atencao ? 'alerta' : 'ok', { tamanho: 20 })),
+        h('div', { class: 'atv-texto' }, h('strong', {}, r.nome), h('span', { class: 'sinc' }, `Motor: ${r.motor}`),
+          h('span', { class: 'sinc' }, r.ultimaExecucao ? `Última execução: ${dataHoraBrasilia(r.ultimaExecucao)}` : 'Sem última execução comprovada'),
+          r.proximaExecucao ? h('span', { class: 'sinc' }, `Próxima janela planejada: ${dataHoraBrasilia(r.proximaExecucao)}`) : null,
+          h('span', { class: 'sinc' }, r.detalhe)),
+        chip(r.rotulo, { tom: r.atencao ? 'warn' : 'ok', iconeNome: r.atencao ? 'alerta' : 'ok' })))));
 }
-const nomeAutomacao = n => ({ 'coleta-diaria': 'Coleta dos números', 'relatorio-semanal': 'Relatório semanal', 'relatorio-preliminar': 'Relatório preliminar', 'diagnostico-segunda': 'Diagnóstico de segunda' }[n] || n.replace(/-/g, ' '));
+function folhaAutomacoes() {
+  abrirFolha({ titulo: 'Saúde das automações', conteudo: acompanharSaude(conteudoAutomacoes(), conteudoAutomacoes) });
+}
 
 function folhaAndamento() {
   const ex = d().executor || {};
+  const pc = derivarSaudeAutomacao(d()).rotinas.find(r => r.id === 'executor-pc');
   const aprovadas = (d().propostas?.propostas || []).filter(p => p.status === 'APROVADA PARA DESENVOLVIMENTO');
   abrirFolha({
     titulo: 'Em andamento',
     conteudo: h('div', {},
-      ex.trabalhoAtual ? campo('martelo', 'Sendo feito agora', `${ex.trabalhoAtual.propostaId || ''} ${ex.trabalhoAtual.etapa || ''}`.trim()) : campo('martelo', 'Sendo feito agora', 'Nada no momento.'),
+      campo('interface', 'Executor no PC', pc.rotulo),
+      ex.trabalhoAtual ? campo('martelo', 'Último trabalho registrado', `${ex.trabalhoAtual.propostaId || ''} ${ex.trabalhoAtual.etapa || ''}`.trim()) : campo('martelo', 'Último trabalho registrado', 'Sem registro.'),
       aprovadas.length ? campo('decisoes', 'Aprovadas esperando a automação', aprovadas.map(p => `${p.id} · ${p.titulo}`).join('\n')) : null,
       campo('relogio', 'Última verificação', ex.ultimaVerificacao ? `${dataBR(ex.ultimaVerificacao)} (${haQuanto(ex.ultimaVerificacao)})` : 'Ainda sem registro'),
       (ex.historico || []).length ? [h('h3', { class: 'folha-subtitulo' }, icone('relogio', { tamanho: 18 }), 'Atividade recente'),
@@ -422,29 +437,29 @@ function folhaAndamento() {
   });
 }
 
-function resumo() {
+function resumo(acompanhar = true) {
   const dados = d();
   const ex = dados.executor || {};
   const aprovadas = (dados.propostas?.propostas || []).filter(p => p.status === 'APROVADA PARA DESENVOLVIMENTO');
-  const andamento = ex.trabalhoAtual ? (ex.trabalhoAtual.propostaId || 'Trabalho aprovado') : aprovadas.length ? `${aprovadas.length} na fila` : 'Fila vazia';
+  const saude = derivarSaudeAutomacao(dados);
+  const pc = saude.rotinas.find(r => r.id === 'executor-pc');
+  const andamento = pc.trabalhoAtualConfirmado ? ex.trabalhoAtual.propostaId : aprovadas.length ? `${aprovadas.length} na fila` : pc.rotulo;
   const pausado = !!dados.config?.lancamentosPausados;
   const prox = proximaPublicacao();
   const rel = dados.relatorios_indice?.relatorios?.at(-1);
-  const saude = Object.values(dados['saude-agendamentos']?.tarefas || {});
-  const falhas = saude.filter(t => t.status === 'falhou').length;
-  const oks = saude.filter(t => t.status === 'ok').length;
   const cartao = (iconeNome, tom, rotulo, valor, sub, acao) => cardBotao('card-resumo', acao,
     h('span', { class: `resumo-icone tom-${tom}` }, icone(iconeNome, { tamanho: 22 })),
     h('span', { class: 'resumo-rotulo' }, rotulo),
     h('strong', { class: 'resumo-valor' }, valor),
     h('span', { class: 'resumo-sub' }, sub));
-  return h('section', { class: 'bloco-resumo' },
+  const secao = h('section', { class: 'bloco-resumo' },
     cabecalhoSecao('raio', 'Resumo de tudo'),
     h('div', { class: 'grade-resumo' },
-      cartao('martelo', 'laranja', 'Em andamento', andamento, ex.trabalhoAtual?.etapa || (aprovadas.length ? 'Esperando a automação' : 'Nada sendo feito'), folhaAndamento),
+      cartao('martelo', 'laranja', 'Em andamento', andamento, pc.trabalhoAtualConfirmado ? ex.trabalhoAtual.etapa || 'Presença recente da equipe' : 'Consulte o último trabalho registrado', folhaAndamento),
       cartao(pausado ? 'pausa' : 'foguete', pausado ? 'vermelho' : 'verde', 'Próxima publicação', pausado ? 'Pausada' : `${NOMES_DIA[diaSemana(prox)]} ${diaNum(prox)}`, pausado ? 'Ligue em Ajustes' : `às ${horarioPublicacao()}`, () => ctx.irPara('ajustes')),
-      cartao('numeros', 'azul', 'Último relatório', rel ? dataBR(rel.data) : 'Nenhum', rel ? (rel.completo ? 'Completo' : 'Incompleto') : 'Sai no sábado 08:00', () => ctx.irPara('numeros')),
-      cartao(falhas ? 'alerta' : 'escudo', falhas ? 'vermelho' : oks ? 'verde' : 'cinza', 'Automações', falhas ? `${falhas} com falha` : oks ? 'Funcionando' : 'Aguardando', `${saude.length} agendadas`, folhaAutomacoes)));
+      cartao('numeros', 'azul', 'Último relatório', rel ? dataBR(rel.data) : 'Nenhum', rel ? (rel.completo ? 'Completo' : 'Incompleto') : 'Sem relatório comprovado', () => ctx.irPara('numeros')),
+      cartao(saude.atencao ? 'alerta' : 'escudo', saude.atencao ? 'vermelho' : 'verde', 'Automações', saude.titulo, saude.resumo, folhaAutomacoes)));
+  return acompanhar ? acompanharSaude(secao, () => resumo(false)) : secao;
 }
 
 function atalhoTarefas() {
