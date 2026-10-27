@@ -15,16 +15,16 @@ import { estadoConfirmacaoSaida } from './nucleo/confirmacao-saida.js?v=20261026
 import { carregarKitEvento } from './nucleo/kit-evento.js?v=20261026-agenda2';
 import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js?v=20261026-agenda2';
 import { ctx } from './ui/contexto.js?v=20261026-agenda2';
-import { telaInicio } from './telas/inicio.js?v=20261026-agenda2';
+import { telaInicio } from './telas/inicio.js?v=20261027-push-atividade1';
 import { telaDecisoes, telaRobloxStudio, telaEventos, telaThumbnails } from './telas/decisoes.js?v=20261026-agenda2';
 import { telaNumeros } from './telas/numeros.js?v=20261026-agenda2';
 import { telaPesquisa } from './telas/pesquisa.js?v=20261026-agenda2';
-import { telaAjustes } from './telas/ajustes.js?v=20261026-agenda2';
+import { telaAjustes } from './telas/ajustes.js?v=20261027-push-atividade1';
 import { telaTarefas } from './telas/tarefas.js?v=20261026-agenda2';
 import { telaAndamento } from './telas/andamento.js?v=20261026-agenda2';
 import { telaIdeias } from './telas/ideias.js?v=20261026-agenda2';
-import { telaAvisos } from './telas/avisos.js?v=20261026-agenda2';
-import { listarAvisos, novosAvisos, lerAvisosLidos } from './nucleo/central-avisos.js?v=20261026-agenda2';
+import { telaAvisos } from './telas/avisos.js?v=20261027-push-atividade1';
+import { listarAvisos, novosAvisos, lerAvisosLidos } from './nucleo/central-avisos.js?v=20261027-push-atividade1';
 
 const estado = { usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null, pushAtivo: null };
 // Os dados ficam na organização games-up-app: o token precisa ter ela como "Resource owner".

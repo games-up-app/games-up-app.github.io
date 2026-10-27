@@ -140,9 +140,9 @@ function cartaoCelular() {
       diag?.ativo ? h('button', { type: 'button', class: 'btn', onclick: () => cel.exemplo().catch(err => ctx.avisar(err.message, true)) }, icone('sino', { tamanho: 18 }), 'Testar aviso só neste celular') : null,
       diag?.ativo ? off : null),
     h('p', { class: 'sinc' }, 'O teste local não verifica o envio da automação. Não é necessário manter o app aberto para receber push.'),
-    h('div', { class: 'ajuste-bloco' }, h('strong', {}, 'Menos interrupções'),
-      h('p', {}, 'No desenvolvimento, só etapas concluídas geram push. Você também recebe os pedidos de decisão e o resultado da publicação. Os bastidores ficam no Andamento.'),
-      h('p', { class: 'sinc' }, 'Entre 23h e 7h (Brasília), os avisos de novidades aguardam a manhã. No modo Foco ou com notificações silenciadas, o celular pode não mostrar o alerta.'),
+    h('div', { class: 'ajuste-bloco' }, h('strong', {}, 'Avisos do trabalho da equipe'),
+      h('p', {}, 'Você recebe quando Codex ou Claude inicia e conclui uma atividade, com o nome e o que está fazendo. Renovar a presença não repete o aviso. Etapas concluídas, decisões e publicações também continuam chegando.'),
+      h('p', { class: 'sinc' }, 'Inícios e conclusões chegam também de madrugada. Notícias e resumos aguardam das 23h às 7h (Brasília). O modo Foco ou o silêncio do celular pode ocultar o alerta.'),
       h('button', { type: 'button', class: 'btn', onclick: () => ctx.irPara('avisos') }, icone('olho', { tamanho: 18 }), 'Ver avisos dentro do app')));
 }
 

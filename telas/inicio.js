@@ -2,7 +2,7 @@
 // Subpágina "noticias" (estado.sub.inicio === 'noticias'): todas as notícias com filtros.
 import { h, icone, chip, iconeDoTipo, abrirFolha } from '../ui/componentes.js?v=20261026-agenda2';
 import { ctx } from '../ui/contexto.js?v=20261026-agenda2';
-import { resumoAtualizacao, listarAvisos, novosAvisos, lerAvisosLidos, marcarAvisoLido, dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261026-agenda2';
+import { resumoAtualizacao, listarAvisos, novosAvisos, lerAvisosLidos, marcarAvisoLido, dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261027-push-atividade1';
 import { avaliarPresenca } from '../nucleo/presenca.js?v=20261026-agenda2';
 import { derivarSaudeAutomacao } from '../nucleo/saude-automacao.js?v=20261026-agenda2';
 import {

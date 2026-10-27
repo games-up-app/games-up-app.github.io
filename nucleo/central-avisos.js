@@ -11,6 +11,43 @@ const releasesDe = dados => lista(dados?.lancamentos?.lancamentos).filter(l => l
 const recusada = r => Boolean(revisoes[r?.revisao?.status]);
 export const rotuloEtapa = r => revisoes[r?.revisao?.status] || estados[r?.estadoEtapa] || 'Etapa registrada';
 
+// Eventos de equipe são passado registrado, nunca presença ao vivo ou Andamento do jogo.
+const texto = v => typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '';
+function instanteEvento(v) {
+  const m = typeof v === 'string' && /^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.exec(v);
+  if (!m || +m[2] > 23 || +m[3] > 59 || +m[4] > 59) return NaN;
+  const dia = Date.parse(`${m[1]}T00:00:00Z`), ms = Date.parse(v);
+  return Number.isFinite(dia) && Number.isFinite(ms) && new Date(dia).toISOString().slice(0, 10) === m[1] ? ms : NaN;
+}
+function avisosDaEquipe(dados, agora) {
+  const hora = agora instanceof Date ? agora.getTime() : agora;
+  const pref = dados?.config?.notificacoesAtividade;
+  const corte = pref == null ? -Infinity : instanteEvento(pref.ativadaEm);
+  if (!Number.isFinite(hora) || Number.isNaN(corte)) return [];
+  const unicos = new Map();
+  for (const e of recentes(lista(dados?.presenca?.eventos))) {
+    const nome = e.agente === 'codex' ? 'Codex' : e.agente === 'claude' ? 'Claude' : null;
+    const em = instanteEvento(e.em), inicio = instanteEvento(e.iniciadaEm);
+    const atividade = texto(e.atividade), sessaoId = texto(e.sessaoId);
+    if (!nome || !['trabalhando', 'concluido'].includes(e.estado) || !atividade
+      || !Number.isFinite(em) || em > hora || em < corte
+      || (!sessaoId && !Number.isFinite(inicio))
+      || (e.iniciadaEm != null && (!Number.isFinite(inicio) || inicio > em
+        || (e.estado === 'trabalhando' && inicio !== em)))) continue;
+    const sessao = sessaoId ? `id:${sessaoId}` : `inicio:${new Date(inicio).toISOString()}`;
+    const evento = e.estado === 'trabalhando' ? 'inicio' : 'conclusao';
+    const id = `atividade:${e.agente}:${encodeURIComponent(sessao)}:${evento}`;
+    if (unicos.has(id)) continue;
+    const propostaId = texto(e.propostaId) || null;
+    const aba = e.ambiente === 'studio' ? 'andamento' : e.ambiente === 'pesquisa' ? 'pesquisa' : 'inicio';
+    unicos.set(id, { id, tipo: 'equipe', agente: e.agente, nome, sessaoId: sessaoId || null,
+      estado: e.estado, atividade, propostaId, em: e.em,
+      titulo: `${nome} ${evento === 'inicio' ? 'começou a trabalhar' : 'concluiu a atividade'}`,
+      texto: atividade, destino: { aba, sub: {} } });
+  }
+  return [...unicos.values()];
+}
+
 export function dataHoraBrasilia(em) {
   return tempo(em) ? `${new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(em))} (Brasília)` : 'Horário não informado';
 }
@@ -22,7 +59,7 @@ export function contarEvidencias(registros) {
 }
 
 /** Destinos usam o mesmo contrato de ctx.irPara(aba, sub), sem depender de push. */
-export function listarAvisos(dados = {}) {
+export function listarAvisos(dados = {}, { agora = Date.now() } = {}) {
   const registros = registrosDe(dados);
   const avisos = registros.map(r => ({
     id: `andamento:${r.id}:${r.estadoEtapa || 'registrada'}:${r.revisao?.status || ''}:${r.revisao?.em || ''}`,
@@ -46,7 +83,7 @@ export function listarAvisos(dados = {}) {
     if (publicada) avisos.push({ ...comum, id: `publicacao:${l.id}:${l.versao || 0}:${l.publicadoEm || ''}`,
       tipo: 'publicacao', em: l.publicadoEm, titulo: 'Publicação confirmada', texto: `${l.id} · ${l.tipo === 'evento' ? 'Evento anunciado no Roblox' : l.tipo === 'thumbnail' ? 'Thumbnail aplicada' : 'Atualização publicada no jogo'}` });
   }
-  return recentes(avisos);
+  return recentes([...avisos, ...avisosDaEquipe(dados, agora)]);
 }
 
 /** Retorna a lista (use .length no sino). IDs de leitura não dependem da ordem dos registros. */
