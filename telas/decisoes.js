@@ -6,10 +6,10 @@
 // Nada expande para baixo: detalhes abrem em folha (de baixo para cima) ou modal (fundo escuro).
 import { h, icone, iconeDoTipo, abrirFolha, abrirModal, botaoCopiar, chip, vazio } from '../ui/componentes.js?v=20261026-agenda2';
 import { ctx } from '../ui/contexto.js?v=20261026-agenda2';
-import { estadoPublicacao, estadoPropostaPublicacao, horarioBrasilia } from '../nucleo/estado-publicacao.js?v=20261108-auditoria';
+import { estadoPublicacao, estadoPropostaPublicacao, horarioBrasilia } from '../nucleo/estado-publicacao.js?v=20261109-capas';
 import { semanaDe } from '../nucleo/andamento.js?v=20261026-agenda2';
 import { recusaParaReformular } from '../nucleo/reformulacao.js';
-import { propostaIncompleta } from '../nucleo/previas.js';
+import { eCapaDivulgacao, propostaIncompleta } from '../nucleo/previas.js?v=20261109-capas';
 import { obterJogo } from '../nucleo/jogos.js';
 
 // ------------------------------------------------------------------ status e grupos
@@ -240,7 +240,7 @@ function chipCategoria(p) {
 
 function primeiraPrevia(p) { return (p.previas || []).find(ehImagem) || null; }
 function rotuloImagem(p, caminho) {
-  if (/previas\/capas\//.test(caminho || '')) return { texto: 'Capa sugerida — evento da Roblox e aviso do grupo', icone: 'evento', tom: 'quente' };
+  if (eCapaDivulgacao(caminho)) return { texto: 'Thumbnail de divulgação — capa sugerida', icone: 'evento', tom: 'quente' };
   const ehThumb = p.tipo === 'thumbnail' || /previas\/thumbnails\//.test(caminho || '');
   return ehThumb
     ? { texto: 'Thumbnail candidata — vitrine do Roblox', icone: 'thumbnail', tom: 'relevante' }
@@ -455,16 +455,19 @@ function abrirProposta(id) {
         const rot = rotuloImagem(p, imagens[0]);
         const palco = h('div', { class: 'dc-heroi' }, moldura('dc-midia-heroi', iconeDoTipo(p.tipo), imagemDados(imagens[0], rot.texto)));
         const etiqueta = h('div', { class: `dc-etiqueta ${rot.tom}` }, icone(rot.icone, { tamanho: 16 }), rot.texto);
-        const download = p.tipo === 'thumbnail' && ctx.linkBaixarPrevia ? h('div', {}, ctx.linkBaixarPrevia(imagens[0])) : null;
+        const botaoDownload = c => eCapaDivulgacao(c) ? ctx.linkBaixarPrevia?.(c, 'Baixar thumbnail de divulgação')
+          : p.tipo === 'thumbnail' ? ctx.linkBaixarPrevia?.(c) : null;
+        const download = h('div', {}, botaoDownload(imagens[0]));
         const tiras = imagens.length > 1 ? h('div', { class: 'dc-tiras' }, imagens.map((c, i) => {
-          const b = h('button', { type: 'button', class: `dc-tira${i === 0 ? ' ativa' : ''}`, 'aria-label': `Imagem ${i + 1} de ${imagens.length}` },
+          const b = h('button', { type: 'button', class: `dc-tira${i === 0 ? ' ativa' : ''}`, 'aria-label': `Imagem ${i + 1} de ${imagens.length} · ${rotuloImagem(p, c).texto}` },
             moldura('dc-midia-tira', 'imagem', imagemDados(c, `Imagem ${i + 1}`)));
           b.addEventListener('click', () => {
             const r = rotuloImagem(p, c);
             palco.replaceChildren(moldura('dc-midia-heroi', iconeDoTipo(p.tipo), imagemDados(c, r.texto)));
             etiqueta.replaceChildren(icone(r.icone, { tamanho: 16 }), r.texto);
             etiqueta.className = `dc-etiqueta ${r.tom}`;
-            if (download) download.replaceChildren(ctx.linkBaixarPrevia(c));
+            const link = botaoDownload(c);
+            download.replaceChildren(...(link ? [link] : []));
             b.parentElement.querySelectorAll('.dc-tira').forEach(x => x.classList.toggle('ativa', x === b));
           });
           return b;

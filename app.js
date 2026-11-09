@@ -6,8 +6,8 @@
 // Cada tela fica em painel/telas/*.js e só usa o ctx.
 import { CONFIG } from './config.js?v=20261026-agenda2';
 import { RepoGitHub } from './nucleo/github.js?v=20261026-agenda2';
-import { criarApi } from './nucleo/api.js?v=20261108-auditoria';
-import { propostaAguardaDecisao } from './nucleo/previas.js';
+import { criarApi } from './nucleo/api.js?v=20261109-capas';
+import { propostaAguardaDecisao } from './nucleo/previas.js?v=20261109-capas';
 import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js?v=20261026-agenda2';
 import { chavePublicaVapid } from './nucleo/vapid.js?v=20261026-agenda2';
 import { ativarNoAparelho, diagnosticarNotificacoes } from './nucleo/notificacoes.js?v=20261026-agenda2';
@@ -16,8 +16,8 @@ import { estadoConfirmacaoSaida } from './nucleo/confirmacao-saida.js?v=20261026
 import { carregarKitEvento } from './nucleo/kit-evento.js?v=20261026-agenda2';
 import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js?v=20261026-agenda2';
 import { ctx } from './ui/contexto.js?v=20261026-agenda2';
-import { telaInicio } from './telas/inicio.js?v=20261108-auditoria2';
-import { telaDecisoes, telaRobloxStudio, telaEventos, telaThumbnails } from './telas/decisoes.js?v=20261108-auditoria';
+import { telaInicio } from './telas/inicio.js?v=20261109-capas';
+import { telaDecisoes, telaRobloxStudio, telaEventos, telaThumbnails } from './telas/decisoes.js?v=20261109-capas';
 import { telaNumeros } from './telas/numeros.js?v=20261026-agenda2';
 import { telaPesquisa } from './telas/pesquisa.js?v=20261108-mandrake3';
 import { telaAjustes } from './telas/ajustes.js?v=20261108-auditoria2';
@@ -145,9 +145,9 @@ function imagemPrivada(caminhoEmDados, opcoes = {}) {
   return imgCarregada(carregarUmaVez(`d:${estado.jogoId}:${rel}`, () => estado.repo.lerImagem(rel)), opcoes);
 }
 
-function linkBaixarPrevia(caminhoEmDados) {
+function linkBaixarPrevia(caminhoEmDados, rotulo = 'Baixar thumbnail') {
   const rel = String(caminhoEmDados || '').replace(/^dados\//, '');
-  const link = h('a', { class: 'dc-btn dc-btn-claro dc-largo', download: rel.split('/').at(-1), 'aria-disabled': 'true' }, 'Baixar thumbnail');
+  const link = h('a', { class: 'dc-btn dc-btn-claro dc-largo', download: rel.split('/').at(-1), 'aria-disabled': 'true' }, rotulo);
   carregarUmaVez(`d:${estado.jogoId}:${rel}`, () => estado.repo.lerImagem(rel)).then(url => {
     if (!url) { link.textContent = 'Arquivo indisponível'; return; }
     link.href = url;

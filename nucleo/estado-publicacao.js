@@ -2,7 +2,7 @@
 // Usa apenas o lançamento e a configuração já carregados; não valida assinaturas,
 // não autoriza nem dispara envios. As regras continuam em regras.js e na automação.
 import { recusaParaReformular } from './reformulacao.js';
-import { propostaIncompleta } from './previas.js';
+import { capaDivulgacaoFaltando, propostaIncompleta } from './previas.js?v=20261109-capas';
 
 const FUSO = 'America/Sao_Paulo';
 const PUBLICADA = 'PUBLICADA';
@@ -188,10 +188,11 @@ export function estadoPropostaPublicacao(p = {}, lancamentos = [], config = {}, 
   const decidivel = ['PROPOSTA', 'AGUARDANDO APROVAÇÃO', 'ADIADA'].includes(p.status);
   const recusa = recusaParaReformular(p);
   if (recusa || decidivel && propostaIncompleta(p)) {
-    const titulo = recusa ? 'Reformulação pendente' : p.tipo === 'thumbnail' ? 'Galeria em preparação' : 'Referência visual em preparação';
+    const titulo = recusa ? 'Reformulação pendente' : p.tipo === 'thumbnail' ? 'Galeria em preparação'
+      : capaDivulgacaoFaltando(p) ? 'Thumbnail de divulgação em preparação' : 'Referência visual em preparação';
     const proximaAcao = recusa ? 'A equipe vai incorporar seu motivo e devolver uma nova versão para sua decisão.'
       : p.tipo === 'thumbnail' ? 'A equipe precisa anexar pelo menos cinco opções ao mesmo cartão antes da aprovação.'
-        : 'A equipe precisa anexar a imagem de referência antes da aprovação.';
+        : 'A equipe precisa conferir a referência e a thumbnail de divulgação, quando exigida, antes da aprovação.';
     return { ...estadoPublicacao({ status: DEVOLVIDA }, config, agora), status: p.status, titulo,
       tom: 'warn', icone: 'editar', quemAge: 'Equipe', proximaAcao, acaoCurta: proximaAcao,
       lancamento: null, vinculoConfirmado: false, podeAutorizar: false, aviso: recusa?.comentario || null };

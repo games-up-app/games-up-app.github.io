@@ -5,7 +5,7 @@ import { ctx } from '../ui/contexto.js?v=20261026-agenda2';
 import { resumoAtualizacao, listarAvisos, novosAvisos, lerAvisosLidos, marcarAvisoLido, dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261027-push-atividade1';
 import { avaliarPresenca } from '../nucleo/presenca.js?v=20261026-agenda2';
 import { derivarSaudeAutomacao } from '../nucleo/saude-automacao.js?v=20261108-auditoria';
-import { propostaAguardaDecisao } from '../nucleo/previas.js';
+import { propostaAguardaDecisao } from '../nucleo/previas.js?v=20261109-capas';
 import {
   FUSO, num, pct, compacto, dataBR, horaBR, haQuanto, textoCurto, urlSegura, botaoLink, imagemExterna, miniaturaIcone,
   cabecalhoSecao, botaoTexto, topoSubpagina, filtrosChips, campo, blocoNumero, miniGrafico, chipStatus, cardClicavel, cardBotao,
