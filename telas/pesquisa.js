@@ -96,12 +96,17 @@ function emAlta() {
 }
 
 // ------------------------------------------------------------------ discord
+function chipEstadoDiscord(x) {
+  if (x.resolvida) return chip('Já atendida', { tom: 'ok', iconeNome: 'ok' });
+  return x.confirmado ? chip('Confirmada', { tom: 'ok', iconeNome: 'ok' }) : chip('Não confirmada', { tom: 'warn', iconeNome: 'alerta' });
+}
+
 function folhaDiscord(x) {
   abrirFolha({
     titulo: 'Sugestão do Discord',
     conteudo: h('div', {},
       h('h3', { class: 'noticia-titulo-folha' }, x.resumo),
-      h('div', { class: 'chips-linha' }, x.confirmado ? chip('Confirmada', { tom: 'ok', iconeNome: 'ok' }) : chip('Não confirmada', { tom: 'warn', iconeNome: 'alerta' }), x.data ? chip(dataBR(x.data), { iconeNome: 'calendario' }) : null),
+      h('div', { class: 'chips-linha' }, chipEstadoDiscord(x), x.data ? chip(dataBR(x.data), { iconeNome: 'calendario' }) : null),
       h('div', { class: 'grade-numeros' }, blocoNumero('like', num(x.votos), 'votos'), blocoNumero('chat', num(x.comentarios), 'comentários')),
       campo('gameplay', 'Jogo', x.jogo),
       campo('decisoes', 'O que fizemos com ela', x.triagem),
@@ -116,7 +121,7 @@ function discord() {
   const f = ctx.estado.filtros;
   const so = f.discordSo || 'nosso';
   const todas = dc.sugestoes || [];
-  const lista = todas.filter(x => so === 'todas' || (x.relacionada !== false && !/outro/i.test(x.jogo || '')));
+  const lista = todas.filter(x => so === 'todas' || (x.resolvida !== true && x.relacionada !== false && !/outro/i.test(x.jogo || '')));
   return h('div', {},
     h('div', { class: `card linha-status-card ${dc.acesso ? 'ok' : 'warn'}` },
       h('span', { class: `resumo-icone tom-${dc.acesso ? 'verde' : 'amarelo'}` }, icone('chat', { tamanho: 22 })),
@@ -128,7 +133,7 @@ function discord() {
       h('div', { class: 'item-texto' },
         h('strong', {}, x.resumo),
         h('div', { class: 'item-numeros' }, h('span', {}, icone('like', { tamanho: 14 }), num(x.votos)), h('span', {}, icone('chat', { tamanho: 14 }), num(x.comentarios))),
-        h('div', { class: 'chips-linha' }, x.confirmado ? chip('Confirmada', { tom: 'ok', iconeNome: 'ok' }) : chip('Não confirmada', { tom: 'warn', iconeNome: 'alerta' }))),
+        h('div', { class: 'chips-linha' }, chipEstadoDiscord(x))),
       icone('direita', { tamanho: 20, classe: 'item-seta' }))))
       : h('div', { class: 'card vazio-card' }, miniaturaIcone('chat', 'cinza'), h('p', {}, 'Nenhuma sugestão para mostrar.')));
 }

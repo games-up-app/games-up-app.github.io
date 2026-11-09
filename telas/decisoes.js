@@ -452,6 +452,7 @@ function abrirProposta(id) {
         const rot = rotuloImagem(p, imagens[0]);
         const palco = h('div', { class: 'dc-heroi' }, moldura('dc-midia-heroi', iconeDoTipo(p.tipo), imagemDados(imagens[0], rot.texto)));
         const etiqueta = h('div', { class: `dc-etiqueta ${rot.tom}` }, icone(rot.icone, { tamanho: 16 }), rot.texto);
+        const download = p.tipo === 'thumbnail' && ctx.linkBaixarPrevia ? h('div', {}, ctx.linkBaixarPrevia(imagens[0])) : null;
         const tiras = imagens.length > 1 ? h('div', { class: 'dc-tiras' }, imagens.map((c, i) => {
           const b = h('button', { type: 'button', class: `dc-tira${i === 0 ? ' ativa' : ''}`, 'aria-label': `Imagem ${i + 1} de ${imagens.length}` },
             moldura('dc-midia-tira', 'imagem', imagemDados(c, `Imagem ${i + 1}`)));
@@ -460,11 +461,12 @@ function abrirProposta(id) {
             palco.replaceChildren(moldura('dc-midia-heroi', iconeDoTipo(p.tipo), imagemDados(c, r.texto)));
             etiqueta.replaceChildren(icone(r.icone, { tamanho: 16 }), r.texto);
             etiqueta.className = `dc-etiqueta ${r.tom}`;
+            if (download) download.replaceChildren(ctx.linkBaixarPrevia(c));
             b.parentElement.querySelectorAll('.dc-tira').forEach(x => x.classList.toggle('ativa', x === b));
           });
           return b;
         })) : null;
-        heroi = h('div', { class: 'dc-heroi-bloco' }, palco, etiqueta, tiras);
+        heroi = h('div', { class: 'dc-heroi-bloco' }, palco, etiqueta, tiras, download);
       } else {
         heroi = h('div', { class: 'dc-heroi-bloco' }, h('div', { class: 'dc-heroi dc-heroi-vazio' }, icone(iconeDoTipo(p.tipo), { tamanho: 56 }),
           h('span', {}, p.tipo === 'thumbnail' ? 'A thumbnail candidata ainda está sendo preparada' : 'Esta ideia não precisa de imagem')));

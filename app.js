@@ -16,9 +16,9 @@ import { carregarKitEvento } from './nucleo/kit-evento.js?v=20261026-agenda2';
 import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js?v=20261026-agenda2';
 import { ctx } from './ui/contexto.js?v=20261026-agenda2';
 import { telaInicio } from './telas/inicio.js?v=20261108-mandrake2';
-import { telaDecisoes, telaRobloxStudio, telaEventos, telaThumbnails } from './telas/decisoes.js?v=20261026-agenda2';
+import { telaDecisoes, telaRobloxStudio, telaEventos, telaThumbnails } from './telas/decisoes.js?v=20261108-mandrake3';
 import { telaNumeros } from './telas/numeros.js?v=20261026-agenda2';
-import { telaPesquisa } from './telas/pesquisa.js?v=20261108-mandrake2';
+import { telaPesquisa } from './telas/pesquisa.js?v=20261108-mandrake3';
 import { telaAjustes } from './telas/ajustes.js?v=20261108-jogos1';
 import { telaTarefas } from './telas/tarefas.js?v=20261026-agenda2';
 import { telaAndamento } from './telas/andamento.js?v=20261026-agenda2';
@@ -142,6 +142,17 @@ function imagemPrivada(caminhoEmDados, opcoes = {}) {
   const rel = String(caminhoEmDados || '').replace(/^dados\//, '');
   if (!/^previas\/[a-z0-9][a-z0-9\-_/]*\.(png|jpg|jpeg|webp)$/.test(rel)) return h('div', { class: `img-carregando ${opcoes.classe || ''}`.trim() }, icone('imagem', { tamanho: 24 }));
   return imgCarregada(carregarUmaVez(`d:${estado.jogoId}:${rel}`, () => estado.repo.lerImagem(rel)), opcoes);
+}
+
+function linkBaixarPrevia(caminhoEmDados) {
+  const rel = String(caminhoEmDados || '').replace(/^dados\//, '');
+  const link = h('a', { class: 'dc-btn dc-btn-claro dc-largo', download: rel.split('/').at(-1), 'aria-disabled': 'true' }, 'Baixar thumbnail');
+  carregarUmaVez(`d:${estado.jogoId}:${rel}`, () => estado.repo.lerImagem(rel)).then(url => {
+    if (!url) { link.textContent = 'Arquivo indisponível'; return; }
+    link.href = url;
+    link.removeAttribute('aria-disabled');
+  }).catch(() => { link.textContent = 'Arquivo indisponível'; });
+  return link;
 }
 /** Imagem exata de um pacote (builds/*.png), também baixada uma vez só. */
 function imagemDoPacote(caminho, opcoes = {}) {
@@ -510,7 +521,7 @@ async function instalarAtalho() {
 
 // ------------------------------------------------------------------ ctx: ponte com as telas
 Object.assign(ctx, {
-  estado, api, gravar, avisar, irPara, imagemPrivada,
+  estado, api, gravar, avisar, irPara, imagemPrivada, linkBaixarPrevia,
   recarregar: carregar,
   render: () => { render.mesmaTela = true; render(); },
   // Extras usados por Ajustes/Início (não fazem parte do contrato mínimo, mas ficam disponíveis).
