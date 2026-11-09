@@ -6,7 +6,7 @@
 // Cada tela fica em painel/telas/*.js e só usa o ctx.
 import { CONFIG } from './config.js?v=20261026-agenda2';
 import { RepoGitHub } from './nucleo/github.js?v=20261026-agenda2';
-import { criarApi } from './nucleo/api.js?v=20261026-agenda2';
+import { criarApi } from './nucleo/api.js?v=20261108-jogos1';
 import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js?v=20261026-agenda2';
 import { chavePublicaVapid } from './nucleo/vapid.js?v=20261026-agenda2';
 import { ativarNoAparelho, diagnosticarNotificacoes } from './nucleo/notificacoes.js?v=20261026-agenda2';
@@ -15,18 +15,21 @@ import { estadoConfirmacaoSaida } from './nucleo/confirmacao-saida.js?v=20261026
 import { carregarKitEvento } from './nucleo/kit-evento.js?v=20261026-agenda2';
 import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js?v=20261026-agenda2';
 import { ctx } from './ui/contexto.js?v=20261026-agenda2';
-import { telaInicio } from './telas/inicio.js?v=20261027-push-atividade1';
+import { telaInicio } from './telas/inicio.js?v=20261108-jogos1';
 import { telaDecisoes, telaRobloxStudio, telaEventos, telaThumbnails } from './telas/decisoes.js?v=20261026-agenda2';
 import { telaNumeros } from './telas/numeros.js?v=20261026-agenda2';
 import { telaPesquisa } from './telas/pesquisa.js?v=20261026-agenda2';
-import { telaAjustes } from './telas/ajustes.js?v=20261027-push-atividade1';
+import { telaAjustes } from './telas/ajustes.js?v=20261108-jogos1';
 import { telaTarefas } from './telas/tarefas.js?v=20261026-agenda2';
 import { telaAndamento } from './telas/andamento.js?v=20261026-agenda2';
 import { telaIdeias } from './telas/ideias.js?v=20261026-agenda2';
 import { telaAvisos } from './telas/avisos.js?v=20261027-push-atividade1';
 import { listarAvisos, novosAvisos, lerAvisosLidos } from './nucleo/central-avisos.js?v=20261027-push-atividade1';
 
-const estado = { usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null, pushAtivo: null };
+import { JOGOS, obterJogo, diretorioJogo } from './nucleo/jogos.js?v=20261108-jogos1';
+let jogoInicial = 'escola-brasileira';
+try { jogoInicial = obterJogo(new URLSearchParams(location.search).get('jogo') || (location.search ? 'escola-brasileira' : localStorage.getItem('gamesup:jogo')) || jogoInicial).id; } catch {}
+const estado = { jogoId: jogoInicial, usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null, pushAtivo: null };
 // Os dados ficam na organização games-up-app: o token precisa ter ela como "Resource owner".
 const LINK_TOKEN = 'https://github.com/settings/personal-access-tokens/new?name=Games%20Up&description=Painel%20da%20Escola%20Brasileira&target_name=games-up-app&expires_in=366&contents=write&issues=write';
 // Equipe: só lê os dados e comenta (os comentários vão para um tópico de Issues).
@@ -53,6 +56,19 @@ const PAGINAS = [
 const TODAS = [...ABAS, ...PAGINAS];
 const PRINCIPAIS_CELULAR = ['inicio', 'decisoes', 'andamento', 'ideias'];
 
+// Trocar com recarga isola requisições em curso, rascunhos, caches e estado das telas.
+function seletorJogo() {
+  return h('label', { class: 'seletor-jogo' }, h('span', {}, 'Jogo selecionado'),
+    h('select', { 'aria-label': 'Selecionar jogo', value: estado.jogoId, onchange: e => {
+      const id = obterJogo(e.target.value).id;
+      if (id === estado.jogoId) return;
+      const editando = [...document.querySelectorAll('textarea, input:not([type=checkbox]):not([type=radio])')].some(el => !el.disabled && el.value !== el.defaultValue);
+      if (editando && !confirm('Trocar de jogo descarta as alterações ainda não salvas. Continuar?')) { e.target.value = estado.jogoId; return; }
+      const url = new URL(location.href); url.search = ''; url.searchParams.set('jogo', id);
+      try { localStorage.setItem('gamesup:jogo', id); sessionStorage.removeItem('eb-aba'); } catch {}
+      location.assign(url.href);
+    } }, JOGOS.map(j => h('option', { value: j.id, selected: j.id === estado.jogoId }, j.nome))));
+}
 function abrirMais() {
   const atalhos = [...ABAS.filter(a => !PRINCIPAIS_CELULAR.includes(a.id)), ...PAGINAS];
   abrirFolha({ titulo: 'Mais', classe: 'folha-mais', conteudo: h('div', { class: 'menu-mais' },
@@ -125,11 +141,11 @@ function imgCarregada(promessa, { alt = '', classe = '' } = {}) {
 function imagemPrivada(caminhoEmDados, opcoes = {}) {
   const rel = String(caminhoEmDados || '').replace(/^dados\//, '');
   if (!/^previas\/[a-z0-9][a-z0-9\-_/]*\.(png|jpg|jpeg|webp)$/.test(rel)) return h('div', { class: `img-carregando ${opcoes.classe || ''}`.trim() }, icone('imagem', { tamanho: 24 }));
-  return imgCarregada(carregarUmaVez(`d:${rel}`, () => estado.repo.lerImagem(rel)), opcoes);
+  return imgCarregada(carregarUmaVez(`d:${estado.jogoId}:${rel}`, () => estado.repo.lerImagem(rel)), opcoes);
 }
 /** Imagem exata de um pacote (builds/*.png), também baixada uma vez só. */
 function imagemDoPacote(caminho, opcoes = {}) {
-  return imgCarregada(carregarUmaVez(`p:${caminho}`, () => estado.repo.lerImagemDoPacote(caminho)), opcoes);
+  return imgCarregada(carregarUmaVez(`p:${estado.jogoId}:${caminho}`, () => estado.repo.lerImagemDoPacote(caminho)), opcoes);
 }
 
 // ------------------------------------------------------------------ inicialização
@@ -140,7 +156,7 @@ async function iniciar() {
   const noticias = busca.get('noticias') === '1';
   const alvoId = /^[A-Za-z0-9_-]{1,100}$/.test(busca.get('id') || '') ? busca.get('id') : null;
   const alvoTipo = ['proposta', 'lancamento'].includes(busca.get('tipo')) ? busca.get('tipo') : null;
-  if (pedida || noticias) history.replaceState(null, '', location.pathname);
+  if (pedida || noticias) history.replaceState(null, '', location.pathname + '?jogo=' + encodeURIComponent(estado.jogoId));
   let token = null;
   try { token = await lerToken(); } catch {}
   if (!token) return telaLogin();
@@ -162,7 +178,8 @@ async function iniciar() {
 }
 
 async function entrar(token) {
-  const repo = new RepoGitHub({ token, ...CONFIG });
+  const repo = new RepoGitHub({ token, ...CONFIG, dir: diretorioJogo(estado.jogoId, CONFIG.dir) });
+  const pushStore = new RepoGitHub({ token, ...CONFIG });
   const eu = await repo.usuario();
   // Só o dono aprova e autoriza. Qualquer outra pessoa entra no modo Equipe (ver e comentar).
   const ehDonoLogin = eu.login.toLowerCase() === String(CONFIG.dono || '').toLowerCase();
@@ -170,7 +187,7 @@ async function entrar(token) {
   estado.repo = repo;
   estado.chave = ehDonoLogin ? await atualizarCadastroDoAparelho().catch(() => null) : null;
   estado.cliente = criarApi({
-    store: repo, usuario: { id: eu.login, nome: eu.nome }, papel: ehDonoLogin ? 'proprietario' : 'equipe',
+    store: repo, pushStore, jogoId: estado.jogoId, usuario: { id: eu.login, nome: eu.nome }, papel: ehDonoLogin ? 'proprietario' : 'equipe',
     topicoEquipe: CONFIG.topicoComentariosEquipe, dono: CONFIG.dono,
     assinar: ehDonoLogin ? await assinadorDoAparelho().catch(() => null) : null,
   });
@@ -277,7 +294,7 @@ function telaLogin(msg) {
     h('main', { class: 'login', id: 'conteudo' },
       h('section', { class: 'login-marca' },
         h('img', { class: 'login-logo', src: 'marca/logo-escuro.png', alt: 'Level Up', width: 320, height: 90 }),
-        h('p', {}, 'Games Up · Central da Escola Brasileira')),
+        h('p', {}, 'Games Up · Seus jogos em um só lugar')),
       h('section', { class: 'login-acesso' },
         h('div', { class: 'login-icone' }, icone('cadeado', { tamanho: 30 })),
         h('h1', {}, 'Entrar'),
@@ -386,8 +403,8 @@ function render() {
             botaoAba(a), h('div', { class: 'nav-submenu', role: 'group', 'aria-label': 'Categorias de propostas' },
               ABAS.filter(a => ['studio', 'eventos', 'thumbnails'].includes(a.id)).map(a => botaoAba(a, true)))) : botaoAba(a))),
         h('div', { class: 'lateral-rodape' },
-          h('img', { class: 'lateral-jogo', src: 'marca/jogo.png', alt: '', width: 36, height: 36, onerror: e => e.target.remove() }),
-          h('div', {}, h('strong', {}, 'Escola Brasileira'), h('small', {}, estado.usuario?.nome || '')))),
+          h('img', { class: 'lateral-jogo', src: estado.dados.jogo?.icone || (estado.jogoId === 'escola-brasileira' ? 'marca/jogo.png' : ''), alt: '', width: 36, height: 36, onerror: e => e.target.remove() }),
+          h('div', {}, h('strong', {}, obterJogo(estado.jogoId).nome), h('small', {}, estado.usuario?.nome || '')))),
       h('main', { class: 'principal', id: 'conteudo' },
         h('header', { class: 'barra-acompanhamento' },
           h('div', { class: 'cabecalho-marca' },
@@ -402,7 +419,7 @@ function render() {
           h('button', { type: 'button', class: 'btn-icone cabecalho-avisos', 'aria-label': 'Ver avisos', title: 'Ver avisos', onclick: () => irPara('avisos') }, icone('sino', { tamanho: 21 }),
             novosAvisos(listarAvisos(estado.dados), lerAvisosLidos(estado.usuario)).length
               ? h('span', { class: 'contador' }, String(Math.min(99, novosAvisos(listarAvisos(estado.dados), lerAvisosLidos(estado.usuario)).length))) : null))),
-        topo, conteudo),
+        seletorJogo(), topo, conteudo),
       h('nav', { class: 'barra-abas', 'aria-label': 'Menu principal' }, ABAS.filter(a => PRINCIPAIS_CELULAR.includes(a.id)).map(a => botaoAba(a)), menuMais)));
   if (render.mesmaTela) window.scrollTo(0, rolagem);
   render.mesmaTela = true;

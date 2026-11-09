@@ -27,10 +27,11 @@ export function validarInscricao(i) {
  * @param papel   'proprietario' (aprova e autoriza) ou 'equipe' (só vê e comenta)
  * @param topicoEquipe número do tópico de Issues onde ficam os comentários da equipe
  */
-export function criarApi({ store, usuario, assinar = null, papel = 'proprietario', topicoEquipe = null, dono = null }) {
+export function criarApi({ store, usuario, assinar = null, papel = 'proprietario', topicoEquipe = null, dono = null, pushStore = store, jogoId = 'escola-brasileira' }) {
   const eu = { id: usuario.id, nome: usuario.nome, papel: papel === 'equipe' ? 'equipe' : 'proprietario' };
   // No modo Equipe só estas ações existem. O GitHub também impede: a equipe só tem leitura nos dados.
   const PERMITIDAS_EQUIPE = new Set(['GET /api/painel', 'GET /api/relatorio', 'POST /api/comentarios']);
+  const prefixoEquipe = jogoId === 'escola-brasileira' ? '' : `[jogo:${jogoId}] `;
   const MARCA = /^\[(proposta|tarefa|lancamento|thumbnail|andamento):([A-Za-z0-9\-_.]{1,64})\]\s*([\s\S]*)$/;
 
   /** Comentários da equipe guardados no tópico de Issues, no mesmo formato de comentarios.json. */
@@ -38,7 +39,7 @@ export function criarApi({ store, usuario, assinar = null, papel = 'proprietario
     if (!topicoEquipe || typeof store.lerComentariosEquipe !== 'function') return [];
     try {
       return (await store.lerComentariosEquipe(topicoEquipe)).map(c => {
-        const m = c.texto.match(MARCA);
+        const m = (prefixoEquipe ? (c.texto.startsWith(prefixoEquipe) ? c.texto.slice(prefixoEquipe.length) : '') : c.texto).match(MARCA);
         if (!m) return null;
         const ehDono = dono && c.login.toLowerCase() === dono.toLowerCase();
         return { id: `gh-${c.id}`, alvoTipo: m[1], alvoId: m[2], texto: m[3].trim().slice(0, 2000), por: { id: c.login, nome: c.login, papel: ehDono ? 'proprietario' : 'equipe' }, em: c.em };
@@ -81,6 +82,8 @@ export function criarApi({ store, usuario, assinar = null, papel = 'proprietario
       const anterior = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1));
       const caminhos = [...ARQUIVOS.map(a => `${a}.json`), `auditoria/${mes(anterior)}.json`, `auditoria/${mes(d)}.json`];
       const lidos = await store.lerVarios(caminhos);
+      const push = await pushStore.lerVarios(['push/inscricoes.json', 'push/confirmacoes.json']);
+      Object.assign(lidos, push);
       const dados = Object.fromEntries(ARQUIVOS.map(a => [a.replaceAll('/', '_'), lidos[`${a}.json`]]));
       dados.auditoria = [...(lidos[caminhos.at(-2)]?.eventos || []), ...(lidos[caminhos.at(-1)]?.eventos || [])];
       const ult = dados.relatorios_indice?.relatorios?.at(-1);
@@ -164,7 +167,7 @@ export function criarApi({ store, usuario, assinar = null, papel = 'proprietario
         // Valida igual ao do dono e grava no tópico da equipe.
         const { comentario } = comentar({ itens: [] }, eu, c);
         if (!topicoEquipe) throw new ErroRegra(503, 'Comentários da equipe ainda não configurados.');
-        await store.comentarEquipe(topicoEquipe, `[${comentario.alvoTipo}:${comentario.alvoId}] ${comentario.texto}`);
+        await store.comentarEquipe(topicoEquipe, prefixoEquipe + `[${comentario.alvoTipo}:${comentario.alvoId}] ${comentario.texto}`);
         return { ok: true, comentario };
       }
       const r = await store.transacao(async tx => {
@@ -193,13 +196,17 @@ export function criarApi({ store, usuario, assinar = null, papel = 'proprietario
 
     'POST /api/lancamentos/decisao': async corpo => {
       const c = texto(corpo);
+      if (c.acao === 'autorizar' && jogoId === 'mandrake-catalogo') throw new ErroRegra(409, 'A publicação do Mandrake ainda precisa ser configurada com destino e chave próprios. A entrega permanece aguardando autorização final.');
       if (c.acao === 'autorizar' && !assinar) throw new ErroRegra(409, 'Este aparelho ainda não tem a chave de autorização. Crie em Ajustes → Chave de autorização.');
       const r = await store.transacao(async tx => {
         const lancs = await tx.ler('lancamentos.json');
         const propostas = await tx.ler('propostas.json');
         const { evento, paraAssinar, propostasRetomadas } = decidirLancamento(lancs, propostas, eu, c);
         const l = lancs.lancamentos.find(x => x.id === c.lancamentoId);
-        if (paraAssinar) l.autorizacao.assinatura = await assinar(paraAssinar);
+        if (paraAssinar) {
+          paraAssinar.jogoId = jogoId;
+          l.autorizacao.assinatura = await assinar(paraAssinar);
+        }
         tx.gravar('lancamentos.json', lancs);
         if (propostasRetomadas.length) {
           tx.gravar('propostas.json', propostas);
@@ -235,7 +242,7 @@ export function criarApi({ store, usuario, assinar = null, papel = 'proprietario
     'POST /api/push/inscrever': async ({ inscricao } = {}) => {
       if (!validarInscricao(inscricao)) throw new ErroRegra(400, 'Inscrição inválida.');
       const id = (await sha256Hex(inscricao.endpoint)).slice(0, 16);
-      await store.transacao(async tx => {
+      await pushStore.transacao(async tx => {
         const d = (await tx.ler('push/inscricoes.json')) || { itens: [] };
         d.itens = d.itens.filter(i => i.id !== id);
         d.itens.push({ id, usuarioId: eu.id, papel: eu.papel, endpoint: inscricao.endpoint, keys: { p256dh: inscricao.keys.p256dh, auth: inscricao.keys.auth }, criadaEm: new Date().toISOString() });
@@ -248,7 +255,7 @@ export function criarApi({ store, usuario, assinar = null, papel = 'proprietario
     'POST /api/push/cancelar': async ({ endpoint } = {}) => {
       if (typeof endpoint !== 'string') throw new ErroRegra(400, 'Endpoint inválido.');
       const id = (await sha256Hex(endpoint)).slice(0, 16);
-      await store.transacao(async tx => {
+      await pushStore.transacao(async tx => {
         const d = (await tx.ler('push/inscricoes.json')) || { itens: [] };
         d.itens = d.itens.filter(i => i.id !== id);
         tx.gravar('push/inscricoes.json', d);

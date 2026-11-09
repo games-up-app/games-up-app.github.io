@@ -142,7 +142,8 @@ function atividadesDoDia(ymd) {
 const aoVivo = { valor: null, tentativa: 0 };
 function buscarAoVivo() {
   const jogo = d().jogo;
-  const id = jogo?.universeId || 9508201896;
+  const id = jogo?.universeId;
+  if (!id) return;
   if (Date.now() - aoVivo.tentativa < 120000) return;
   aoVivo.tentativa = Date.now();
   fetch(`https://games.roproxy.com/v1/games?universeIds=${encodeURIComponent(id)}`, { referrerPolicy: 'no-referrer', credentials: 'omit' })
@@ -171,7 +172,7 @@ function numerosDoJogo() {
 }
 
 function iconeJogo(jogo, classe = 'jogo-icone') {
-  return imagemExterna(jogo.icone, { alt: '', classe, reserva: h('img', { src: 'marca/jogo.png', alt: '', class: classe }) }) || h('img', { src: 'marca/jogo.png', alt: '', class: classe });
+  return imagemExterna(jogo.icone, { alt: '', classe, reserva: h('span', { class: classe }, icone('roblox')) }) || h('span', { class: classe }, icone('roblox'));
 }
 
 function cardJogo() {

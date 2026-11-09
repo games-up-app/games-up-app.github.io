@@ -237,6 +237,9 @@ export function telaAjustes() {
   }
   return h('div', { class: 'pagina-ajustes' },
     cartaoConta(),
+    ctx.estado.jogoId === 'mandrake-catalogo' ? h('section', { class: 'card' },
+      h('h2', {}, 'Automação do Mandrake'),
+      h('p', {}, 'Coleta pública, relatórios e avisos têm dados próprios. Analytics detalhado depende de uma chave de leitura do Mandrake. A publicação automática no Roblox ainda precisa ser configurada para este jogo.')) : null,
     cartaoPublicacoes(),
     cartaoChave(),
     cartaoCelular(),
