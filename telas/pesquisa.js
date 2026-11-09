@@ -145,7 +145,10 @@ function bugsDiscord() {
   const itens = bugs.itens || [];
   const doJogo = itens.filter(i => i.relacionada === true);
   const semJogo = itens.filter(i => !i.jogosIds?.length);
-  const lista = modo === 'jogo' ? doJogo : modo === 'sem-jogo' ? semJogo : itens;
+  const selecionadas = modo === 'jogo' ? doJogo : modo === 'sem-jogo' ? semJogo : itens;
+  const relatos = selecionadas.filter(i => i.tipo === 'bug');
+  const tipoFiltro = f.bugsTipo || 'tudo';
+  const lista = tipoFiltro === 'relatos' ? relatos : selecionadas;
   const limite = f.bugsLimite || 30;
   const jogo = i => (i.jogosIds || []).map(id => contextoPesquisa(id).nome).join(' e ') || 'Jogo não identificado';
   const tipo = i => i.tipo === 'bug' ? 'Relato de bug · a verificar' : 'Comentário';
@@ -164,6 +167,8 @@ function bugsDiscord() {
     bugs.link ? botaoLink(bugs.link, 'Abrir canal no Discord', { classe: 'btn', iconeNome: 'chat' }) : null,
     filtrosChips([['todos', `Todas (${itens.length})`, 'chat'], ['jogo', `${perfil().nome} (${doJogo.length})`, perfil().icone],
       ['sem-jogo', `Sem jogo (${semJogo.length})`, 'pesquisa']], modo, v => { f.bugsFiltro = v; f.bugsLimite = 30; ctx.render(); }, 'Filtro de relatos de bugs'),
+    filtrosChips([['tudo', 'Relatos e comentários', 'chat'], ['relatos', `Só relatos (${relatos.length})`, 'alerta']],
+      tipoFiltro, v => { f.bugsTipo = v; f.bugsLimite = 30; ctx.render(); }, 'Tipo de mensagem'),
     lista.length ? h('div', { class: 'lista-cards' }, lista.slice(0, limite).map(i => cardClicavel('card-item', () => abrir(i), `Abrir mensagem: ${textoCurto(i.resumo, 80)}`,
       miniaturaIcone(i.tipo === 'bug' ? 'alerta' : 'chat', i.tipo === 'bug' ? 'amarelo' : 'roxo', 'mini'),
       h('div', { class: 'item-texto' }, h('strong', {}, textoCurto(i.resumo, 150)),

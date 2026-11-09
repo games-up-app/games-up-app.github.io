@@ -1,8 +1,8 @@
 {
-  "revisao": "2a3989a8fb20e3be279ebd15f79e51a5c19386ba",
+  "revisao": "572d6e30a8b8c8589f5fcab8708ffbc0df304e46",
   "arquivos": {
     "aparelhos-autorizados.json": "50481e94f491dbc3bcc8797aede84768ecd12a5a1094365057ad6d882f88a1cf",
-    "app.js": "aad88689b145f168d4f9e455d726f3c56fb82b13d029d00c78b860782de1c8be",
+    "app.js": "0a98afb0e08088a1278d9f2a7de2c12a6acdac80245002241f58daf9a82f6786",
     "config.js": "7575f0d75b73768ef5209c4d0c9c83a83723a23fca7b8ae6c4e1c59ebde45bdb",
     "estilos/andamento.css": "ed06a200660edd82b652d6c2d96350acaeb617f48bcf427f7908cd3543fb36d2",
     "estilos/avisos.css": "797e4290da6ce44c827931b105d17f474a2222112fef41b99d87610982cd4ed9",
@@ -16,7 +16,7 @@
     "icones/icone-512.png": "86f2b1870c7f5c1d1a115aca73ad3048d8486660352e3bafe325df621e20d03a",
     "icones/icone-maskable-512.png": "3aaf799585d6bb1dcc81017e5d9f02aa383eb2883113c54f8564f80996235926",
     "icones/icone.svg": "42957cfef7d72a605cb94c74e7b304e5d7caf00ec1cd0100a75d3583256ef777",
-    "index.html": "d95340babfd2d617cdae4737499671bff4a42d22ad5f682958be034d50b31b2a",
+    "index.html": "17a927374db66a5481957366366b942c7c5a501d2706c118325c240b4ff9a7fd",
     "manifest.webmanifest": "085f575b37e10084063f41fd84b7f8b9e2e3bcf42b36b6a6cbd2230dde79e791",
     "marca/claude.ico": "525d5c063365f7656ba0fe8b9165742c4874e70852d9bed7153b6faca8663a02",
     "marca/codex.svg": "cacff8e3a710f72a9ef19a9bfbe67871553db5b746fc509b62fec7fd2eae9df6",
@@ -58,7 +58,7 @@
     "telas/ideias.js": "73cc33ca74d577771cb699e89d7d9bd74aea51299c376d95d90dc43b3827041f",
     "telas/inicio.js": "1cb2ce0d68c351dcce0b32cc23054ee9d7a99ea03e7bb215550a4d966aa391b0",
     "telas/numeros.js": "776273eebaec8e8cd1437051037920f7c5d61656aa9f75c535cee64ea613f5ce",
-    "telas/pesquisa.js": "cc3c939f40cc65272cfd0d17ab8e68a6a36e0630ea809bf72a9e128a128a2da6",
+    "telas/pesquisa.js": "04014391d7f7be35c39783532edecd950c0627ca962669b50d95e0052be9dab5",
     "telas/tarefas.js": "0e39a8292469fca7e988863af80be8595caecb1bb1e269c468452b23ff121531",
     "tema.js": "625f3de7fde7749c77f908420734016e8395a5fc78064bbbfc37822c906eed89",
     "ui/componentes.js": "38950666bec38a292944f33ebd91765bee0001ba4f71f4f96b42f055fed6162d",
