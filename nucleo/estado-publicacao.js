@@ -1,6 +1,9 @@
 // Apresentação do fluxo de publicação no Games Up (fora do Explorer do Roblox).
 // Usa apenas o lançamento e a configuração já carregados; não valida assinaturas,
 // não autoriza nem dispara envios. As regras continuam em regras.js e na automação.
+import { recusaParaReformular } from './reformulacao.js';
+import { propostaIncompleta } from './previas.js';
+
 const FUSO = 'America/Sao_Paulo';
 const PUBLICADA = 'PUBLICADA';
 const AUTORIZADA = 'APROVADA PARA PUBLICAÇÃO';
@@ -138,6 +141,10 @@ export function estadoPublicacao(l = {}, config = {}, agora = new Date()) {
       proximaAcao = 'A equipe precisa preparar a retomada para você revisar e autorizar novamente. Acompanhe no Andamento.';
       acaoCurta = 'Equipe: preparar nova autorização';
     }
+  } else if (esperando && testesOk && config.jogoId === 'mandrake-catalogo') {
+    titulo = 'Integração de publicação pendente'; tom = 'warn'; icone = 'cadeado'; etapa = 1;
+    proximaAcao = 'O Mandrake precisa de destino e credencial de publicação próprios antes da autorização pelo Games Up.';
+    acaoCurta = 'Equipe: configurar a publicação do Mandrake';
   } else if (esperando && testesOk) {
     titulo = 'Pronto · falta sua autorização'; tom = 'warn'; icone = 'assinatura'; etapa = 1;
     proximaAcao = 'Confira as evidências no Andamento. Depois, digite ou cole o código, toque em Autorizar publicação e confirme em Sim, autorizar no seu aparelho.';
@@ -179,9 +186,19 @@ export function estadoPropostaPublicacao(p = {}, lancamentos = [], config = {}, 
   const l = [...atuais].reverse().sort((a, b) => ultimaData(b) - ultimaData(a))[0];
   const vinculoConfirmado = !!l && versaoDe(l) === p.versao && p.versao != null;
   const decidivel = ['PROPOSTA', 'AGUARDANDO APROVAÇÃO', 'ADIADA'].includes(p.status);
+  const recusa = recusaParaReformular(p);
+  if (recusa || decidivel && propostaIncompleta(p)) {
+    const titulo = recusa ? 'Reformulação pendente' : p.tipo === 'thumbnail' ? 'Galeria em preparação' : 'Referência visual em preparação';
+    const proximaAcao = recusa ? 'A equipe vai incorporar seu motivo e devolver uma nova versão para sua decisão.'
+      : p.tipo === 'thumbnail' ? 'A equipe precisa anexar pelo menos cinco opções ao mesmo cartão antes da aprovação.'
+        : 'A equipe precisa anexar a imagem de referência antes da aprovação.';
+    return { ...estadoPublicacao({ status: DEVOLVIDA }, config, agora), status: p.status, titulo,
+      tom: 'warn', icone: 'editar', quemAge: 'Equipe', proximaAcao, acaoCurta: proximaAcao,
+      lancamento: null, vinculoConfirmado: false, podeAutorizar: false, aviso: recusa?.comentario || null };
+  }
   if (l && vinculoConfirmado && !decidivel && p.status !== 'REJEITADA' && !p.bloqueio) {
     const f = estadoPublicacao(l, config, agora);
-    const podeAutorizar = l.status === AGUARDANDO && l.testes?.resultado === 'aprovado';
+    const podeAutorizar = config.jogoId !== 'mandrake-catalogo' && l.status === AGUARDANDO && l.testes?.resultado === 'aprovado';
     return { ...f, lancamento: l, vinculoConfirmado, podeAutorizar,
       quemAge: f.confirmada ? 'Você, se quiser revisar a entrega' : podeAutorizar ? 'Você, proprietário' : l.status === AUTORIZADA && l.tipo === 'jogo' ? 'Automação; a equipe acompanha' : 'Equipe',
       aviso: null };
@@ -211,7 +228,7 @@ export function estadoPropostaPublicacao(p = {}, lancamentos = [], config = {}, 
   }
   const f = estadoPublicacao({ status, testes: { resultado: 'pendente' } }, config, agora);
   return { ...f, titulo, status, tom, icone, proximaAcao, acaoCurta: decidivel ? 'Você: abrir e decidir a ideia' : status === 'REJEITADA' ? 'Nenhuma ação pendente' : status === DEVOLVIDA ? 'Equipe: corrigir, testar e reentregar' : status === 'BLOQUEADA' ? 'Equipe: resolver o bloqueio' : 'Equipe: preparar e conferir o pacote', quemAge, lancamento: decidivel ? null : l, vinculoConfirmado,
-    podeAutorizar: !decidivel && !p.bloqueio && !!l && l.status === AGUARDANDO && l.testes?.resultado === 'aprovado',
+    podeAutorizar: config.jogoId !== 'mandrake-catalogo' && p.status !== 'REJEITADA' && !decidivel && !p.bloqueio && !!l && l.status === AGUARDANDO && l.testes?.resultado === 'aprovado',
     horario: l ? estadoPublicacao(l, config, agora).horario : `${previsao({ dataAlvo: (p.agendamentoPublicacao || p.fazerHoje)?.data || p.semanaAlvo, urgente: !!(p.agendamentoPublicacao || p.fazerHoje), horario: (p.agendamentoPublicacao || p.fazerHoje)?.horario }, config, agora).texto} Sem pacote autorizado, não há publicação garantida no dia.`,
     aviso: !l && relacionados.length ? 'Os pacotes encontrados são de outra versão da proposta. A equipe precisa entregar a versão atual.' : null,
   };

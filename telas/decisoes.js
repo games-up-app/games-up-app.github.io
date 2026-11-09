@@ -6,8 +6,11 @@
 // Nada expande para baixo: detalhes abrem em folha (de baixo para cima) ou modal (fundo escuro).
 import { h, icone, iconeDoTipo, abrirFolha, abrirModal, botaoCopiar, chip, vazio } from '../ui/componentes.js?v=20261026-agenda2';
 import { ctx } from '../ui/contexto.js?v=20261026-agenda2';
-import { estadoPublicacao, estadoPropostaPublicacao, horarioBrasilia } from '../nucleo/estado-publicacao.js?v=20261026-agenda2';
+import { estadoPublicacao, estadoPropostaPublicacao, horarioBrasilia } from '../nucleo/estado-publicacao.js?v=20261108-auditoria';
 import { semanaDe } from '../nucleo/andamento.js?v=20261026-agenda2';
+import { recusaParaReformular } from '../nucleo/reformulacao.js';
+import { propostaIncompleta } from '../nucleo/previas.js';
+import { obterJogo } from '../nucleo/jogos.js';
 
 // ------------------------------------------------------------------ status e grupos
 const ST = {
@@ -49,10 +52,10 @@ const SUBABAS = [
 ];
 
 const GRUPOS_PROPOSTA = {
-  aberto: p => DECIDIVEIS.includes(p.status) && !p.bloqueio || estadoDaProposta(p).podeAutorizar,
+  aberto: p => DECIDIVEIS.includes(p.status) && !p.bloqueio && !propostaIncompleta(p) || estadoDaProposta(p).podeAutorizar,
   autorizadas: p => estadoDaProposta(p).status === ST.APROVADA_PUB,
   concluidas: p => estadoDaProposta(p).confirmada,
-  agendadas: p => p.status !== ST.REJEITADA && !GRUPOS_PROPOSTA.aberto(p) && !GRUPOS_PROPOSTA.autorizadas(p) && !GRUPOS_PROPOSTA.concluidas(p),
+  agendadas: p => !!recusaParaReformular(p) || p.status !== ST.REJEITADA && !GRUPOS_PROPOSTA.aberto(p) && !GRUPOS_PROPOSTA.autorizadas(p) && !GRUPOS_PROPOSTA.concluidas(p),
   todas: () => true,
 };
 const GRUPOS_LANCAMENTO = {
@@ -87,7 +90,7 @@ const ehDono = () => ctx.estado?.usuario?.papel === 'proprietario';
 const dados = () => ctx.estado?.dados || {};
 const propostas = () => dados().propostas?.propostas || [];
 const lancamentos = () => dados().lancamentos?.lancamentos || [];
-const configPublicacao = () => ({ ...(dados().config || {}), tarefas: dados().tarefas?.tarefas || [] });
+const configPublicacao = () => ({ ...(dados().config || {}), jogoId: ctx.estado.jogoId, tarefas: dados().tarefas?.tarefas || [] });
 const estadoDaProposta = p => {
   const f = estadoPropostaPublicacao(p, lancamentos(), configPublicacao());
   if (!f.confirmada && !f.lancamento) f.horario = `${textoPlanejamento(p)}. O planejamento não garante entrega pronta nem publicação.`;
@@ -213,8 +216,8 @@ function abrirKitEvento(l) {
           moldura('dc-midia-heroi', 'evento', h('img', { src: url, alt: 'Capa exata do evento, conferida pelo hash do pacote' })),
           h('a', { class: 'dc-btn dc-btn-claro dc-largo', href: url, download: String(kit.arquivo || 'capa-evento.png').split(/[\\/]/).pop() }, icone('imagem', { tamanho: 20 }), 'Baixar capa exata (PNG)'),
           h('p', { class: 'dc-fraco' }, 'PNG original com metadados preservados. Esta é a capa do evento, não a thumbnail da vitrine do jogo.')),
-        h('a', { class: 'dc-btn dc-btn-roxo dc-largo', href: 'https://create.roblox.com/dashboard/creations/experiences/9508201896', target: '_blank', rel: 'noopener noreferrer' }, icone('externo', { tamanho: 20 }), 'Abrir Creator Hub'),
-        h('p', { class: 'dc-fraco' }, 'Abre a experiência Escola Brasileira. No Creator Hub, entre na área de eventos. Copiar ou baixar não cria o evento.'));
+        h('a', { class: 'dc-btn dc-btn-roxo dc-largo', href: `https://create.roblox.com/dashboard/creations/experiences/${obterJogo(ctx.estado.jogoId).universeId}`, target: '_blank', rel: 'noopener noreferrer' }, icone('externo', { tamanho: 20 }), 'Abrir Creator Hub'),
+        h('p', { class: 'dc-fraco' }, 'No Creator Hub do jogo selecionado, entre na área de eventos. Copiar ou baixar não cria o evento.'));
     } catch {
       if (fechada) return;
       conteudo.replaceChildren(h('p', { class: 'dc-erro', role: 'alert' }, 'Não foi possível conferir o kit desta versão. Recarregue os dados do app e tente novamente. Nenhum texto ou capa foi liberado para copiar ou baixar.'),
@@ -492,8 +495,8 @@ function abrirProposta(id) {
         blocoComentarios('proposta', p.id, comentarios));
     },
     rodape: podeDecidir ? fechar => {
-      const aprovar = botaoDc('Aprovar ideia', { classe: 'dc-btn-roxo dc-btn-grande', iconeNome: 'ok', onclick: () => confirmarDecisao(p, 'aprovar', fechar) });
-      const hoje = p.tipo === 'thumbnail' ? null : botaoDc('Aprovar e fazer hoje', { classe: 'dc-btn-amarelo dc-btn-grande', iconeNome: 'raio', onclick: () => folhaFazerHoje(p, { aprovarAntes: true, fecharModal: fechar }) });
+      const aprovar = propostaIncompleta(p) ? null : botaoDc('Aprovar ideia', { classe: 'dc-btn-roxo dc-btn-grande', iconeNome: 'ok', onclick: () => confirmarDecisao(p, 'aprovar', fechar) });
+      const hoje = !aprovar || p.tipo === 'thumbnail' ? null : botaoDc('Aprovar e fazer hoje', { classe: 'dc-btn-amarelo dc-btn-grande', iconeNome: 'raio', onclick: () => folhaFazerHoje(p, { aprovarAntes: true, fecharModal: fechar }) });
       return h('div', { class: 'dc-rodape-decisao' }, aprovar, hoje,
         h('div', { class: 'dc-rodape-linha' },
           botaoDc('Pedir alterações', { classe: 'dc-btn-claro', iconeNome: 'editar', onclick: () => confirmarDecisao(p, 'pedir_alteracoes', fechar) }),
@@ -572,6 +575,7 @@ function folhaDetalhesProposta(p) {
       linha('esquerda', 'Se der errado', p.recuperacao),
       linha('jogadores', 'Responsável', p.responsavel),
       linha('calendario', 'Versão e data', `Versão ${p.versao} · ${textoPlanejamento(p)}`),
+      (p.reformulacoes || []).map(r => linha('editar', `Reformulação na versão ${r.versao}`, r.resposta)),
       (p.decisoes || []).length ? linha('decisoes', `Decisões anteriores (${p.decisoes.length})`, h('ul', { class: 'dc-ul' }, p.decisoes.map(d => h('li', {}, `${({ aprovar: 'Aprovou', rejeitar: 'Rejeitou', pedir_alteracoes: 'Pediu alterações', adiar: 'Adiou' })[d.acao] || d.acao} — ${d.por?.nome || ''}, ${dataHora(d.em)}${d.comentario ? `: “${d.comentario}”` : ''}`)))) : null),
   });
 }
@@ -580,7 +584,7 @@ const INFO_DECISAO = {
   aprovar: { titulo: 'Aprovar esta ideia?', icone: 'ok', tom: 'roxo', texto: 'A ideia entra na fila de preparação e aguarda a equipe. A publicação pede a sua autorização final depois, em outra etapa.', botao: 'Sim, aprovar', classe: 'dc-btn-roxo', comentario: 'Comentário (opcional)', msg: 'Aprovada. Aguarda equipe.' },
   pedir_alteracoes: { titulo: 'Pedir alterações', icone: 'editar', tom: 'amarelo', texto: 'A proposta volta para a equipe ajustar e depois aparece de novo para você.', botao: 'Enviar pedido', classe: 'dc-btn-roxo', comentario: 'O que precisa mudar? (obrigatório)', obrigatorio: true, msg: 'Pedido de alterações enviado.' },
   adiar: { titulo: 'Adiar esta ideia?', icone: 'relogio', tom: 'neutro', texto: 'A ideia fica guardada e você pode decidir em outro momento.', botao: 'Sim, adiar', classe: 'dc-btn-roxo', comentario: 'Comentário (opcional)', msg: 'Ideia adiada.' },
-  rejeitar: { titulo: 'Rejeitar esta ideia?', icone: 'fechar', tom: 'vermelho', texto: 'A ideia é arquivada. Ela só volta se aparecer um motivo novo e você permitir.', botao: 'Sim, rejeitar', classe: 'dc-btn-perigo-cheio', comentario: 'Motivo (opcional)', msg: 'Ideia rejeitada.' },
+  rejeitar: { titulo: 'Rejeitar esta ideia?', icone: 'fechar', tom: 'vermelho', texto: 'Com um motivo, a equipe reformula a proposta e devolve uma nova versão para você decidir. Sem motivo, a ideia fica arquivada.', botao: 'Sim, rejeitar', classe: 'dc-btn-perigo-cheio', comentario: 'Motivo (opcional)', msg: 'Ideia rejeitada.' },
 };
 
 // Após gravar, mantém a proposta acessível com o estado devolvido pelo servidor.
@@ -709,6 +713,7 @@ function blocoCodigo(l) {
 function cardAutorizacao(l, fecharModal) {
   const testesOk = l.testes?.resultado === 'aprovado';
   const semChave = ctx.estado?.chave?.estado !== 'registrada';
+  const semIntegracao = ctx.estado.jogoId === 'mandrake-catalogo';
   const cod = codigoPacote(l);
   const card = h('article', { class: 'dc-autorizacao', id: `lanc-${l.id}`, tabindex: '-1' });
 
@@ -719,7 +724,7 @@ function cardAutorizacao(l, fecharModal) {
   const confere = () => conf.value.trim().toLowerCase() === cod && !!cod;
   conf.addEventListener('input', () => {
     const ok = confere();
-    autorizar.disabled = !ok || semChave || !testesOk;
+    autorizar.disabled = !ok || semChave || !testesOk || semIntegracao;
     conf.classList.toggle('confere', ok);
     conf.classList.toggle('errado', conf.value.trim().length >= 8 && !ok);
     conf.setAttribute('aria-invalid', String(conf.value.trim().length >= 8 && !ok));
@@ -751,7 +756,8 @@ function cardAutorizacao(l, fecharModal) {
       (l.changelog || []).length ? h('ul', { class: 'dc-checks' }, l.changelog.slice(0, 5).map(c => h('li', {}, icone('ok', { tamanho: 16 }), h('span', {}, c)))) : h('p', { class: 'dc-fraco' }, '—'),
       (l.changelog || []).length > 5 ? h('button', { type: 'button', class: 'dc-link', onclick: () => folhaLancamento(l) }, `Ver mais ${l.changelog.length - 5}`) : null),
     blocoCodigo(l),
-    semChave ? blocoChaveFaltando() : !testesOk ? h('div', { class: 'dc-alerta bad' }, icone('alerta', { tamanho: 20 }), h('div', {}, 'Os testes não foram aprovados; não dá para autorizar.')) : null,
+    semIntegracao ? h('div', { class: 'dc-alerta warn' }, icone('cadeado', { tamanho: 20 }), h('p', {}, 'A publicação pelo Games Up aguarda a configuração do destino e da credencial do Mandrake.'))
+      : semChave ? blocoChaveFaltando() : !testesOk ? h('div', { class: 'dc-alerta bad' }, icone('alerta', { tamanho: 20 }), h('div', {}, 'Os testes não foram aprovados; não dá para autorizar.')) : null,
     semChave || !ehDono() ? null : h('div', { class: 'dc-aut-passos' },
       h('label', { class: 'dc-rotulo', for: `dc-conf-${l.id}` }, h('span', { class: 'dc-num' }, '1'), 'Digite ou cole o código do pacote'),
       h('div', { class: 'dc-conf-linha' }, conf, colar),

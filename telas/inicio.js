@@ -4,7 +4,8 @@ import { h, icone, chip, iconeDoTipo, abrirFolha } from '../ui/componentes.js?v=
 import { ctx } from '../ui/contexto.js?v=20261026-agenda2';
 import { resumoAtualizacao, listarAvisos, novosAvisos, lerAvisosLidos, marcarAvisoLido, dataHoraBrasilia } from '../nucleo/central-avisos.js?v=20261027-push-atividade1';
 import { avaliarPresenca } from '../nucleo/presenca.js?v=20261026-agenda2';
-import { derivarSaudeAutomacao } from '../nucleo/saude-automacao.js?v=20261026-agenda2';
+import { derivarSaudeAutomacao } from '../nucleo/saude-automacao.js?v=20261108-auditoria';
+import { propostaAguardaDecisao } from '../nucleo/previas.js';
 import {
   FUSO, num, pct, compacto, dataBR, horaBR, haQuanto, textoCurto, urlSegura, botaoLink, imagemExterna, miniaturaIcone,
   cabecalhoSecao, botaoTexto, topoSubpagina, filtrosChips, campo, blocoNumero, miniGrafico, chipStatus, cardClicavel, cardBotao,
@@ -102,10 +103,10 @@ function atividadesDoDia(ymd) {
 
   // Itens concretos de hoje: o que espera por você e o que está sendo feito.
   if (hoje) {
-    const pend = (dados.propostas?.propostas || []).filter(p => p.status === 'AGUARDANDO APROVAÇÃO');
+    const pend = (dados.propostas?.propostas || []).filter(propostaAguardaDecisao);
     if (pend.length) add('Hoje', pend.length === 1 ? `Decidir a proposta ${pend[0].id}` : `Decidir ${pend.length} propostas`, 'propostas', 'Você',
       pend.map(p => p.titulo).join(' · '), () => ctx.irPara('decisoes', { tipo: 'proposta', id: pend[0].id }), true);
-    (dados.lancamentos?.lancamentos || []).filter(l => l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL').forEach(l =>
+    (dados.lancamentos?.lancamentos || []).filter(l => ctx.estado.jogoId !== 'mandrake-catalogo' && l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL').forEach(l =>
       add('Hoje', `Autorizar a atualização ${l.id}`, 'autorizacao', 'Você', (l.changelog || []).join(' · ') || null, () => ctx.irPara('decisoes', { tipo: 'lancamento', id: l.id }), true));
     const atual = dados.executor?.trabalhoAtual;
     if (atual && derivarSaudeAutomacao(dados).rotinas.find(r => r.id === 'executor-pc')?.trabalhoAtualConfirmado) add('Agora', `Trabalho registrado: ${atual.propostaId || 'trabalho aprovado'}`, 'desenvolvimento', 'Equipe', atual.etapa || null);
@@ -375,8 +376,8 @@ function paginaNoticias() {
 // ------------------------------------------------------------------ o que precisa de você
 function precisaDeVoce() {
   const dados = d();
-  const pend = (dados.propostas?.propostas || []).filter(p => p.status === 'AGUARDANDO APROVAÇÃO');
-  const finais = (dados.lancamentos?.lancamentos || []).filter(l => l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL');
+  const pend = (dados.propostas?.propostas || []).filter(propostaAguardaDecisao);
+  const finais = (dados.lancamentos?.lancamentos || []).filter(l => ctx.estado.jogoId !== 'mandrake-catalogo' && l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL');
   const total = pend.length + finais.length;
   if (!total) {
     return h('section', { class: 'card card-em-dia' }, h('span', { class: 'em-dia-icone' }, icone('ok', { tamanho: 24 })),
@@ -504,11 +505,12 @@ function saudacao() {
   const hoje = hojeYMD();
   const wd = diaSemana(hoje);
   const its = atividadesDoDia(hoje);
-  const pub = wd === diaPublicacao();
-  const voce = (d().propostas?.propostas || []).filter(p => p.status === 'AGUARDANDO APROVAÇÃO').length + (d().lancamentos?.lancamentos || []).filter(l => l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL').length;
+  const pub = ctx.estado.jogoId !== 'mandrake-catalogo' && wd === diaPublicacao();
+  const voce = (d().propostas?.propostas || []).filter(propostaAguardaDecisao).length
+    + (d().lancamentos?.lancamentos || []).filter(l => ctx.estado.jogoId !== 'mandrake-catalogo' && l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL').length;
   const frase = pub ? (d().config?.lancamentosPausados ? 'Hoje seria dia de publicação, mas está pausada.' : `Hoje é dia de publicação às ${horarioPublicacao()}.`)
     : voce ? (ctx.estado.usuario?.papel === 'proprietario' ? `Hoje tem ${voce === 1 ? 'uma decisão sua' : `${voce} decisões suas`} esperando.` : `${voce === 1 ? 'Uma decisão' : `${voce} decisões`} esperando o dono. Você pode ver e comentar.`)
-      : `Hoje: ${its.map(x => CATEGORIAS[x.cat]?.nome).filter((v, i, a) => v && a.indexOf(v) === i).slice(0, 3).join(', ').toLowerCase()}.`;
+      : its.length ? `Hoje: ${its.map(x => CATEGORIAS[x.cat]?.nome).filter((v, i, a) => v && a.indexOf(v) === i).slice(0, 3).join(', ').toLowerCase()}.` : 'Nenhuma atividade prevista para hoje.';
   const sol = hh >= 6 && hh < 18;
   return h('header', { class: 'boas-vindas' },
     h('div', { class: 'bv-topo' },

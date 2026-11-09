@@ -17,6 +17,8 @@ const REGRAS = {
   imagens: { nome: 'API paga de imagens', escopo: 'Serviço separado da fila de anexos das propostas e da produção por Codex no PC.' },
   'coleta-diaria': { nome: 'Coleta dos números', cron: '0 9 * * *' },
   'jogos-de-escola': { nome: 'Jogos de escola', cron: '0 9 * * *' },
+  'jogos-de-catalogo': { nome: 'Jogos de catálogo', cron: '0 9 * * *' },
+  'reformulacao-propostas': { nome: 'Reformulação de propostas', idade: 2.5 * HORA, observadora: true },
   'numeros-completos': { nome: 'Números completos', cron: '0 9 * * *' },
   discord: { nome: 'Discord', cron: '0 9 * * *' },
   'relatorio-semanal': { nome: 'Relatório semanal', cron: '0 11 * * 6' },

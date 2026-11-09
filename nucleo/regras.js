@@ -2,6 +2,8 @@
 // Roda igual no navegador (painel) e no Node (scripts e testes).
 // A garantia final não depende do navegador: o workflow de publicação confere a
 // assinatura feita pela chave guardada só no aparelho do proprietário (lib/trava.mjs).
+import { propostaIncompleta } from './previas.js';
+
 const randomUUID = () => globalThis.crypto.randomUUID();
 
 export const STATUS = Object.freeze({
@@ -58,6 +60,8 @@ export function decidirProposta(dados, usuario, { propostaId, acao, comentario, 
   if (!p) throw new ErroRegra(404, 'Proposta não encontrada.');
   if (versao !== p.versao) throw new ErroRegra(409, 'A proposta mudou desde que você abriu. Recarregue e revise antes de decidir.');
   if (!PODE_DECIDIR_EM.includes(p.status)) throw new ErroRegra(409, `Não é possível decidir uma proposta com status "${p.status}".`);
+  if (acao === 'aprovar' && propostaIncompleta(p)) throw new ErroRegra(409, p.tipo === 'thumbnail'
+    ? 'A thumbnail ainda precisa de cinco opções na mesma proposta.' : 'A proposta de mudança visual ainda precisa da imagem de referência.');
   const texto = limparTexto(comentario);
   if (acao === 'pedir_alteracoes' && !texto) throw new ErroRegra(400, 'Pedir alterações exige um comentário.');
   const anterior = p.status;

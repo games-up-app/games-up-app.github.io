@@ -6,7 +6,8 @@
 // Cada tela fica em painel/telas/*.js e só usa o ctx.
 import { CONFIG } from './config.js?v=20261026-agenda2';
 import { RepoGitHub } from './nucleo/github.js?v=20261026-agenda2';
-import { criarApi } from './nucleo/api.js?v=20261108-jogos1';
+import { criarApi } from './nucleo/api.js?v=20261108-auditoria';
+import { propostaAguardaDecisao } from './nucleo/previas.js';
 import { lerToken, gravarToken, esquecerToken, atualizarCadastroDoAparelho, criarChaveDoAparelho, assinadorDoAparelho } from './nucleo/aparelho.js?v=20261026-agenda2';
 import { chavePublicaVapid } from './nucleo/vapid.js?v=20261026-agenda2';
 import { ativarNoAparelho, diagnosticarNotificacoes } from './nucleo/notificacoes.js?v=20261026-agenda2';
@@ -15,11 +16,11 @@ import { estadoConfirmacaoSaida } from './nucleo/confirmacao-saida.js?v=20261026
 import { carregarKitEvento } from './nucleo/kit-evento.js?v=20261026-agenda2';
 import { h, icone, abrirFolha, fecharTudo, temCamadaAberta } from './ui/componentes.js?v=20261026-agenda2';
 import { ctx } from './ui/contexto.js?v=20261026-agenda2';
-import { telaInicio } from './telas/inicio.js?v=20261108-mandrake2';
-import { telaDecisoes, telaRobloxStudio, telaEventos, telaThumbnails } from './telas/decisoes.js?v=20261108-mandrake3';
+import { telaInicio } from './telas/inicio.js?v=20261108-auditoria';
+import { telaDecisoes, telaRobloxStudio, telaEventos, telaThumbnails } from './telas/decisoes.js?v=20261108-auditoria';
 import { telaNumeros } from './telas/numeros.js?v=20261026-agenda2';
 import { telaPesquisa } from './telas/pesquisa.js?v=20261108-mandrake3';
-import { telaAjustes } from './telas/ajustes.js?v=20261108-jogos1';
+import { telaAjustes } from './telas/ajustes.js?v=20261108-auditoria';
 import { telaTarefas } from './telas/tarefas.js?v=20261026-agenda2';
 import { telaAndamento } from './telas/andamento.js?v=20261026-agenda2';
 import { telaIdeias } from './telas/ideias.js?v=20261026-agenda2';
@@ -29,7 +30,7 @@ import { listarAvisos, novosAvisos, lerAvisosLidos } from './nucleo/central-avis
 import { JOGOS, obterJogo, diretorioJogo } from './nucleo/jogos.js?v=20261108-jogos1';
 let jogoInicial = 'escola-brasileira';
 try { jogoInicial = obterJogo(new URLSearchParams(location.search).get('jogo') || (location.search ? 'escola-brasileira' : localStorage.getItem('gamesup:jogo')) || jogoInicial).id; } catch {}
-const estado = { jogoId: jogoInicial, usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, chave: null, pushAtivo: null };
+const estado = { jogoId: jogoInicial, usuario: null, dados: null, aba: 'inicio', sub: {}, filtros: {}, repo: null, cliente: null, opcoesCliente: null, chave: null, pushAtivo: null };
 // Os dados ficam na organização games-up-app: o token precisa ter ela como "Resource owner".
 const LINK_TOKEN = 'https://github.com/settings/personal-access-tokens/new?name=Games%20Up&description=Painel%20da%20Escola%20Brasileira&target_name=games-up-app&expires_in=366&contents=write&issues=write';
 // Equipe: só lê os dados e comenta (os comentários vão para um tópico de Issues).
@@ -197,11 +198,11 @@ async function entrar(token) {
   await repo.conferirAcesso({ exigirEscrita: ehDonoLogin });
   estado.repo = repo;
   estado.chave = ehDonoLogin ? await atualizarCadastroDoAparelho().catch(() => null) : null;
-  estado.cliente = criarApi({
+  estado.opcoesCliente = {
     store: repo, pushStore, jogoId: estado.jogoId, usuario: { id: eu.login, nome: eu.nome }, papel: ehDonoLogin ? 'proprietario' : 'equipe',
     topicoEquipe: CONFIG.topicoComentariosEquipe, dono: CONFIG.dono,
-    assinar: ehDonoLogin ? await assinadorDoAparelho().catch(() => null) : null,
-  });
+  };
+  await atualizarClienteAssinado();
   estado.usuario = estado.cliente.usuario;
   document.documentElement.dataset.papel = estado.usuario.papel;
 }
@@ -333,7 +334,7 @@ async function sair() {
       enviando = true; confirmar.disabled = true;
       try {
         await esquecerToken();
-        estado.usuario = null; estado.repo = null; estado.cliente = null;
+        estado.usuario = null; estado.repo = null; estado.cliente = null; estado.opcoesCliente = null;
         clearInterval(timer); fecharTudo(); telaLogin('Você saiu deste aparelho.');
       } catch { enviando = false; avisar('Não foi possível encerrar a sessão. Tente novamente.', true); confirmar.disabled = false; }
     } });
@@ -346,22 +347,27 @@ async function sair() {
 }
 
 // ------------------------------------------------------------------ chave do aparelho
+async function atualizarClienteAssinado() {
+  const opcoes = estado.opcoesCliente;
+  const assinar = opcoes.papel === 'proprietario' ? await assinadorDoAparelho().catch(() => null) : null;
+  estado.cliente = criarApi({ ...opcoes, assinar });
+}
 async function conferirCadastro() {
   estado.chave = await atualizarCadastroDoAparelho();
-  estado.cliente = criarApi({ store: estado.repo, usuario: { id: estado.usuario.id, nome: estado.usuario.nome }, assinar: await assinadorDoAparelho() });
+  await atualizarClienteAssinado();
   return estado.chave?.estado === 'registrada';
 }
 async function criarChave() {
   estado.chave = await criarChaveDoAparelho(estado.repo, { usuarioId: estado.usuario.id });
-  estado.cliente = criarApi({ store: estado.repo, usuario: { id: estado.usuario.id, nome: estado.usuario.nome }, assinar: await assinadorDoAparelho() });
+  await atualizarClienteAssinado();
   return estado.chave;
 }
 
 // ------------------------------------------------------------------ casca
 function contagemDecisoes() {
   const d = estado.dados || {};
-  const pend = (d.propostas?.propostas || []).filter(p => p.status === 'AGUARDANDO APROVAÇÃO').length;
-  const fin = (d.lancamentos?.lancamentos || []).filter(l => l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL').length;
+  const pend = (d.propostas?.propostas || []).filter(propostaAguardaDecisao).length;
+  const fin = estado.jogoId === 'mandrake-catalogo' ? 0 : (d.lancamentos?.lancamentos || []).filter(l => l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL').length;
   return pend + fin;
 }
 

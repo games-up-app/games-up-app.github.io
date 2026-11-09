@@ -1,7 +1,7 @@
 // "API" do painel rodando no próprio navegador.
 // Mantém as mesmas rotas da versão com servidor, mas lê e grava direto no repositório
 // privado (RepoGitHub) com o token do proprietário. Quem tem o token é o proprietário.
-import { ErroRegra, STATUS, decidirProposta, agendarProposta, fazerHoje, comentar, atualizarTarefa, decidirLancamento, alterarConfig } from './regras.js?v=20261026-agenda2';
+import { ErroRegra, STATUS, decidirProposta, agendarProposta, fazerHoje, comentar, atualizarTarefa, decidirLancamento, alterarConfig } from './regras.js?v=20261108-auditoria';
 import { validarIdeia } from './ideias.js?v=20261026-agenda2';
 import { decidirEtapa } from './revisao-etapas.js?v=20261026-agenda2';
 
