@@ -83,6 +83,7 @@ const diasDoTexto = t => DIAS_TEXTO.filter(([n]) => semAcento(t || '').includes(
 
 export function diaPublicacao() { return d().config?.diaPublicacao === 'domingo' ? 0 : 6; }
 export function horarioPublicacao() { return d().config?.horarioPublicacao || '10:30'; }
+const publicacaoIntegrada = () => ctx.estado.jogoId !== 'mandrake-catalogo';
 
 /** Tudo o que acontece num dia (fixos + agenda + itens concretos). */
 function atividadesDoDia(ymd) {
@@ -106,13 +107,13 @@ function atividadesDoDia(ymd) {
     const pend = (dados.propostas?.propostas || []).filter(propostaAguardaDecisao);
     if (pend.length) add('Hoje', pend.length === 1 ? `Decidir a proposta ${pend[0].id}` : `Decidir ${pend.length} propostas`, 'propostas', 'Você',
       pend.map(p => p.titulo).join(' · '), () => ctx.irPara('decisoes', { tipo: 'proposta', id: pend[0].id }), true);
-    (dados.lancamentos?.lancamentos || []).filter(l => ctx.estado.jogoId !== 'mandrake-catalogo' && l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL').forEach(l =>
+    (dados.lancamentos?.lancamentos || []).filter(l => publicacaoIntegrada() && l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL').forEach(l =>
       add('Hoje', `Autorizar a atualização ${l.id}`, 'autorizacao', 'Você', (l.changelog || []).join(' · ') || null, () => ctx.irPara('decisoes', { tipo: 'lancamento', id: l.id }), true));
     const atual = dados.executor?.trabalhoAtual;
     if (atual && derivarSaudeAutomacao(dados).rotinas.find(r => r.id === 'executor-pc')?.trabalhoAtualConfirmado) add('Agora', `Trabalho registrado: ${atual.propostaId || 'trabalho aprovado'}`, 'desenvolvimento', 'Equipe', atual.etapa || null);
   }
   // Atualizações marcadas para este dia.
-  (dados.lancamentos?.lancamentos || []).filter(l => l.dataAlvo === ymd && l.status !== 'PUBLICADA').forEach(l =>
+  (dados.lancamentos?.lancamentos || []).filter(l => publicacaoIntegrada() && l.dataAlvo === ymd && l.status !== 'PUBLICADA').forEach(l =>
     add(l.horario || horarioPublicacao(), `${l.id} · envio previsto`, 'publicacao', 'GitHub', l.status === 'APROVADA PARA PUBLICAÇÃO' ? 'Autorizada; aguarda confirmação do envio.' : 'Exige entrega pronta e autorização final.', null, true));
 
   // Exibe somente a próxima janela derivável do cron informado pela fonte, como planejamento.
@@ -121,7 +122,7 @@ function atividadesDoDia(ymd) {
     add(horaBR(r.proximaExecucao), `${r.nome} · planejado`, categoriaPorTexto(r.nome), r.motor === 'PC' ? 'Equipe' : 'Rotina na nuvem',
       `${r.rotulo}. ${r.ultimaExecucao ? `Última execução comprovada: ${dataHoraBrasilia(r.ultimaExecucao)}.` : 'Nenhuma execução comprovada.'} ${r.detalhe}`);
   });
-  if (wd === diaPublicacao()) {
+  if (publicacaoIntegrada() && wd === diaPublicacao()) {
     const pausado = !!dados.config?.lancamentosPausados;
     add(horarioPublicacao(), pausado ? 'Publicação pausada' : 'Publicação no jogo', 'publicacao', 'GitHub',
       pausado ? 'Pausada em Ajustes: nada vai para o jogo.' : 'Só vai para o jogo o que você autorizou.', null, !pausado);
@@ -247,7 +248,7 @@ function calendario() {
     h('div', { class: 'semana-grade' }, dias.map((ymd, i) => {
       const wd = diaSemana(ymd);
       const its = atividadesDoDia(ymd);
-      const pub = wd === diaPublicacao() && !d().config?.lancamentosPausados;
+      const pub = publicacaoIntegrada() && wd === diaPublicacao() && !d().config?.lancamentosPausados;
       const cats = [...new Set(its.map(x => x.cat))].slice(0, 3);
       return h('button', { type: 'button', class: `dia${i === 0 ? ' hoje' : ''}${pub ? ' publica' : ''}`, onclick: () => folhaDia(ymd), 'aria-label': `${i === 0 ? 'Hoje' : NOMES_DIA[wd]}, dia ${diaNum(ymd)}: ${its.length} atividades` },
         h('span', { class: 'dia-nome' }, i === 0 ? 'Hoje' : CURTOS_DIA[wd]),
@@ -280,7 +281,7 @@ function folhaDia(ymd) {
   abrirFolha({
     titulo: `${hoje ? 'Hoje' : NOMES_DIA[wd]}, ${dataLonga(ymd)}`,
     conteudo: h('div', { class: 'folha-dia' },
-      wd === diaPublicacao() ? h('div', { class: `faixa ${d().config?.lancamentosPausados ? 'warn' : 'ok'}` }, icone(d().config?.lancamentosPausados ? 'pausa' : 'foguete', { tamanho: 20 }),
+      publicacaoIntegrada() && wd === diaPublicacao() ? h('div', { class: `faixa ${d().config?.lancamentosPausados ? 'warn' : 'ok'}` }, icone(d().config?.lancamentosPausados ? 'pausa' : 'foguete', { tamanho: 20 }),
         h('span', {}, d().config?.lancamentosPausados ? 'Dia de publicação, mas as publicações estão pausadas.' : `Dia de publicação às ${horarioPublicacao()}.`)) : null,
       its.map(it => {
         const cat = CATEGORIAS[it.cat] || CATEGORIAS.monitoramento;
@@ -377,7 +378,7 @@ function paginaNoticias() {
 function precisaDeVoce() {
   const dados = d();
   const pend = (dados.propostas?.propostas || []).filter(propostaAguardaDecisao);
-  const finais = (dados.lancamentos?.lancamentos || []).filter(l => ctx.estado.jogoId !== 'mandrake-catalogo' && l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL');
+  const finais = (dados.lancamentos?.lancamentos || []).filter(l => publicacaoIntegrada() && l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL');
   const total = pend.length + finais.length;
   if (!total) {
     return h('section', { class: 'card card-em-dia' }, h('span', { class: 'em-dia-icone' }, icone('ok', { tamanho: 24 })),
@@ -465,7 +466,9 @@ function resumo(acompanhar = true) {
     cabecalhoSecao('raio', 'Resumo de tudo'),
     h('div', { class: 'grade-resumo' },
       cartao('martelo', 'laranja', 'Em andamento', andamento, pc.trabalhoAtualConfirmado ? ex.trabalhoAtual.etapa || 'Presença recente da equipe' : 'Consulte o último trabalho registrado', folhaAndamento),
-      cartao(pausado ? 'pausa' : 'foguete', pausado ? 'vermelho' : 'verde', 'Próxima publicação', pausado ? 'Pausada' : `${NOMES_DIA[diaSemana(prox)]} ${diaNum(prox)}`, pausado ? 'Ligue em Ajustes' : `às ${horarioPublicacao()}`, () => ctx.irPara('ajustes')),
+      publicacaoIntegrada()
+        ? cartao(pausado ? 'pausa' : 'foguete', pausado ? 'vermelho' : 'verde', 'Próxima publicação', pausado ? 'Pausada' : `${NOMES_DIA[diaSemana(prox)]} ${diaNum(prox)}`, pausado ? 'Ligue em Ajustes' : `às ${horarioPublicacao()}`, () => ctx.irPara('ajustes'))
+        : cartao('cadeado', 'laranja', 'Publicação pelo app', 'Pendente', 'Integração própria do Mandrake', () => ctx.irPara('ajustes')),
       cartao('numeros', 'azul', 'Último relatório', rel ? dataBR(rel.data) : 'Nenhum', rel ? (rel.completo ? 'Completo' : 'Incompleto') : 'Sem relatório comprovado', () => ctx.irPara('numeros')),
       cartao(saude.atencao ? 'alerta' : 'escudo', saude.atencao ? 'vermelho' : 'verde', 'Automações', saude.titulo, saude.resumo, folhaAutomacoes)));
   return acompanhar ? acompanharSaude(secao, () => resumo(false)) : secao;
@@ -505,9 +508,9 @@ function saudacao() {
   const hoje = hojeYMD();
   const wd = diaSemana(hoje);
   const its = atividadesDoDia(hoje);
-  const pub = ctx.estado.jogoId !== 'mandrake-catalogo' && wd === diaPublicacao();
+  const pub = publicacaoIntegrada() && wd === diaPublicacao();
   const voce = (d().propostas?.propostas || []).filter(propostaAguardaDecisao).length
-    + (d().lancamentos?.lancamentos || []).filter(l => ctx.estado.jogoId !== 'mandrake-catalogo' && l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL').length;
+    + (d().lancamentos?.lancamentos || []).filter(l => publicacaoIntegrada() && l.status === 'AGUARDANDO AUTORIZAÇÃO FINAL').length;
   const frase = pub ? (d().config?.lancamentosPausados ? 'Hoje seria dia de publicação, mas está pausada.' : `Hoje é dia de publicação às ${horarioPublicacao()}.`)
     : voce ? (ctx.estado.usuario?.papel === 'proprietario' ? `Hoje tem ${voce === 1 ? 'uma decisão sua' : `${voce} decisões suas`} esperando.` : `${voce === 1 ? 'Uma decisão' : `${voce} decisões`} esperando o dono. Você pode ver e comentar.`)
       : its.length ? `Hoje: ${its.map(x => CATEGORIAS[x.cat]?.nome).filter((v, i, a) => v && a.indexOf(v) === i).slice(0, 3).join(', ').toLowerCase()}.` : 'Nenhuma atividade prevista para hoje.';

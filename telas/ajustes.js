@@ -52,11 +52,13 @@ function cartaoPublicacoes() {
     oninput: e => { rascunho.hora = e.target.value; atualizar(); }, onchange: e => { rascunho.hora = e.target.value; atualizar(); } });
 
   const dias = segmentado([['sabado', 'Sábado', 'calendario'], ['domingo', 'Domingo', 'calendario']], rascunho.dia, v => { rascunho.dia = v; ctx.render(); }, { rotulo: 'Dia de publicação', classe: 'grande' });
+  const integracaoPendente = ctx.estado.jogoId === 'mandrake-catalogo';
 
   return h('section', { class: 'card card-publicacoes' },
     cabecalhoSecao('foguete', 'Publicações no jogo'),
-    h('div', { class: `faixa ${rascunho.pausado ? 'warn' : 'ok'}` }, icone(rascunho.pausado ? 'pausa' : 'foguete', { tamanho: 20 }),
-      h('span', {}, rascunho.pausado ? 'Nada vai para o jogo enquanto estiver pausado, mesmo o que já foi autorizado.' : `O que você autorizar vai para o jogo no ${rascunho.dia === 'domingo' ? 'domingo' : 'sábado'} às ${rascunho.hora || '—'}.`)),
+    h('div', { class: `faixa ${integracaoPendente || rascunho.pausado ? 'warn' : 'ok'}` }, icone(integracaoPendente ? 'cadeado' : rascunho.pausado ? 'pausa' : 'foguete', { tamanho: 20 }),
+      h('span', {}, integracaoPendente ? 'A publicação pelo app do Mandrake aguarda configuração própria. O dia e o horário abaixo servem como planejamento.'
+        : rascunho.pausado ? 'Nada vai para o jogo enquanto estiver pausado, mesmo o que já foi autorizado.' : `O que você autorizar vai para o jogo no ${rascunho.dia === 'domingo' ? 'domingo' : 'sábado'} às ${rascunho.hora || '—'}.`)),
     h('div', { class: 'ajuste-bloco' },
       interruptor({ ligado: rascunho.pausado, rotulo: 'Pausar todas as publicações', descricao: 'Use em caso de dúvida ou viagem.', aoMudar: v => { rascunho.pausado = v; ctx.render(); } })),
     h('div', { class: 'ajuste-bloco' },
