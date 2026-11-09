@@ -1,4 +1,4 @@
-// Tela Pesquisa: o que está em alta, sugestões do Discord e jogos de escola para acompanhar.
+// Tela Pesquisa: tendências, Discord e jogos comparáveis ao jogo selecionado.
 // Tudo em cards com miniatura; detalhes abrem numa folha de baixo para cima.
 import { h, icone, chip, abrirFolha } from '../ui/componentes.js?v=20261026-agenda2';
 import { ctx } from '../ui/contexto.js?v=20261026-agenda2';
@@ -9,6 +9,21 @@ import {
 
 const d = () => ctx.estado.dados || {};
 
+// Apenas apresentação: dados continuam vindo do repositório isolado pelo app.
+export function contextoPesquisa(jogoId, meta = {}) {
+  const catalogo = (jogoId || meta.jogoId) === 'mandrake-catalogo';
+  return catalogo ? {
+    catalogo: true, nome: 'Mandrake Catálogo', tituloJogos: 'Jogos de catálogo', grupo: 'jogos de catálogo e avatares', icone: 'roblox', filtro: 'catalogoFiltro',
+    vazioJogos: 'Ainda não há uma leitura de jogos de catálogo e avatares para o Mandrake Catálogo.',
+    vazioAlta: 'Ainda não há pesquisa de catálogo, avatares e moda para o Mandrake Catálogo. As fontes e leituras deste jogo aparecerão aqui após a coleta.',
+  } : {
+    catalogo: false, nome: 'Escola Brasileira', tituloJogos: 'Jogos de escola', grupo: 'jogos de escola', icone: 'escola', filtro: 'escolaFiltro',
+    vazioJogos: 'A lista de jogos de escola aparece depois da primeira leitura.',
+    vazioAlta: 'A pesquisa da semana sai toda segunda às 09:30.',
+  };
+}
+const perfil = () => contextoPesquisa(ctx.estado.jogoId, d().meta);
+
 // Categoria da tendência -> ícone e cor da miniatura.
 function visualCategoria(cat) {
   const c = String(cat || '').toLowerCase();
@@ -18,6 +33,7 @@ function visualCategoria(cat) {
   if (/insta/.test(c)) return ['camera', 'laranja'];
   if (/thumb|capa|imagem/.test(c)) return ['thumbnail', 'azul'];
   if (/evento|sazonal/.test(c)) return ['evento', 'amarelo'];
+  if (/cat[aá]logo|avatar|moda|roupa|outfit/.test(c)) return ['roblox', 'rosa'];
   if (/escola|educa/.test(c)) return ['escola', 'verde'];
   if (/mec|gameplay|jogo/.test(c)) return ['gameplay', 'azul'];
   return ['grafico', 'roxo'];
@@ -53,7 +69,7 @@ function folhaTendencia(i) {
 
 function emAlta() {
   const semanas = d().tendencias?.semanas || [];
-  if (!semanas.length) return h('div', { class: 'card vazio-card' }, miniaturaIcone('grafico', 'roxo'), h('p', {}, 'A pesquisa da semana sai toda segunda às 09:30.'));
+  if (!semanas.length) return h('div', { class: 'card vazio-card' }, miniaturaIcone('grafico', 'roxo'), h('p', {}, perfil().vazioAlta));
   const f = ctx.estado.filtros;
   const cats = [...new Set(semanas.flatMap(s => (s.itens || []).map(i => i.categoria)).filter(Boolean))];
   const cat = f.tendCat || 'todas';
@@ -106,7 +122,7 @@ function discord() {
       h('span', { class: `resumo-icone tom-${dc.acesso ? 'verde' : 'amarelo'}` }, icone('chat', { tamanho: 22 })),
       h('span', { class: 'atalho-texto' }, h('strong', {}, dc.acesso ? 'Discord conectado' : 'Sem acesso ao Discord'), h('span', {}, dc.ultimaLeitura ? `Última leitura ${haQuanto(dc.ultimaLeitura)}` : 'Ainda sem leitura')),
       dc.observacao ? h('button', { type: 'button', class: 'btn-icone', 'aria-label': 'Saber mais', onclick: () => abrirFolha({ titulo: 'Sobre o Discord', conteudo: h('div', {}, campo('lampada', 'Observação', dc.observacao), campo('escudo', 'Regra', 'Votos mostram interesse, mas sozinhos não decidem o que entra no jogo. Uma sugestão rejeitada só volta com motivo novo e com a sua permissão.')) }) }, icone('lampada', { tamanho: 20 })) : null),
-    filtrosChips([['nosso', 'Só Escola Brasileira', 'escola'], ['todas', `Todas (${todas.length})`, 'chat']], so, v => { f.discordSo = v; ctx.render(); }, 'Filtro do Discord'),
+    filtrosChips([['nosso', `Só ${perfil().nome}`, perfil().icone], ['todas', `Todas (${todas.length})`, 'chat']], so, v => { f.discordSo = v; ctx.render(); }, 'Filtro do Discord'),
     lista.length ? h('div', { class: 'lista-cards' }, lista.map(x => cardClicavel('card-item', () => folhaDiscord(x), `Abrir sugestão: ${x.resumo}`,
       miniaturaIcone('chat', x.confirmado ? 'roxo' : 'cinza', 'mini'),
       h('div', { class: 'item-texto' },
@@ -117,12 +133,12 @@ function discord() {
       : h('div', { class: 'card vazio-card' }, miniaturaIcone('chat', 'cinza'), h('p', {}, 'Nenhuma sugestão para mostrar.')));
 }
 
-// ------------------------------------------------------------------ jogos de escola
-const ehParecido = j => (typeof j.parecido === 'boolean' ? j.parecido : /\b(rp|roleplay|role ?play)\b/i.test(j.nome || ''));
+// ------------------------------------------------------------------ jogos comparáveis
+const ehParecido = j => (typeof j.parecido === 'boolean' ? j.parecido : (perfil().catalogo ? /cat[aá]logo|catalog|avatar|outfit|provador/i : /\b(rp|roleplay|role ?play)\b/i).test(j.nome || ''));
 const ehPequeno = j => j.porte === 'pequeno' || (j.porte == null && Number(j.jogando) < 20000);
 
 function iconeJogo(j, classe = 'mini') {
-  const reserva = miniaturaIcone('escola', 'azul', classe);
+  const reserva = miniaturaIcone(perfil().icone, 'azul', classe);
   return imagemExterna(j.icone, { alt: '', classe, reserva }) || reserva;
 }
 
@@ -134,7 +150,7 @@ function folhaJogo(j) {
     titulo: semEmoji(j.nome),
     conteudo: h('div', { class: 'folha-jogo' },
       h('div', { class: 'folha-jogo-topo' }, iconeJogo(j, 'jogo-icone grande'),
-        h('div', {}, h('strong', { class: 'folha-grande' }, num(j.jogando)), h('span', { class: 'sinc' }, 'jogando agora'), h('div', { class: 'chips-linha' }, chipTendencia(j.tendencia, j.variacao7d), ehPequeno(j) ? chip('Pequeno', { tom: 'curiosidade', iconeNome: 'alvo' }) : chip('Referência', { iconeNome: 'trofeu' }), ehParecido(j) ? chip('Parecido com o nosso', { tom: 'relevante', iconeNome: 'escola' }) : null))),
+        h('div', {}, h('strong', { class: 'folha-grande' }, num(j.jogando)), h('span', { class: 'sinc' }, 'jogando agora'), h('div', { class: 'chips-linha' }, chipTendencia(j.tendencia, j.variacao7d), ehPequeno(j) ? chip('Pequeno', { tom: 'curiosidade', iconeNome: 'alvo' }) : chip('Referência', { iconeNome: 'trofeu' }), ehParecido(j) ? chip('Parecido com o nosso', { tom: 'relevante', iconeNome: perfil().icone }) : null))),
       h('div', { class: 'grade-numeros' },
         blocoNumero('olho', compacto(j.visitas), 'visitas'),
         blocoNumero('estrela', compacto(j.favoritos), 'favoritos'),
@@ -148,7 +164,7 @@ function folhaJogo(j) {
   });
 }
 
-function cardJogoEscola(j) {
+function cardJogoComparavel(j) {
   const graf = miniGrafico((j.historico || []).map(x => x.jogando), { largura: 120, altura: 36, rotulo: 'Tendência de jogadores' });
   return cardClicavel(`card-escola${ehPequeno(j) ? ' pequeno' : ''}`, () => folhaJogo(j), `Abrir ${j.nome}`,
     h('div', { class: 'escola-topo' },
@@ -156,29 +172,29 @@ function cardJogoEscola(j) {
       h('div', { class: 'item-texto' },
         h('strong', { class: 'escola-nome' }, semEmoji(j.nome)),
         h('div', { class: 'escola-jogando' }, icone('jogadores', { tamanho: 16 }), h('b', {}, num(j.jogando)), ' jogando'),
-        h('div', { class: 'chips-linha' }, chipTendencia(j.tendencia, j.variacao7d), ehParecido(j) ? chip('Parecido', { tom: 'relevante', iconeNome: 'escola' }) : null))),
+        h('div', { class: 'chips-linha' }, chipTendencia(j.tendencia, j.variacao7d), ehParecido(j) ? chip('Parecido', { tom: 'relevante', iconeNome: perfil().icone }) : null))),
     h('div', { class: 'escola-rodape' },
       graf ? h('div', { class: 'escola-grafico' }, graf) : h('span', { class: 'sinc escola-visitas' }, icone('olho', { tamanho: 14 }), `${compacto(j.visitas)} visitas`),
       botaoLink(j.link, 'Ver na Roblox', { classe: 'btn pequeno', iconeNome: 'roblox' })));
 }
 
-function jogosEscola() {
+function jogosComparaveis() {
   const c = d().concorrentes || {};
   const jogos = [...(c.jogos || [])].sort((a, b) => (b.jogando || 0) - (a.jogando || 0));
-  if (!jogos.length) return h('div', { class: 'card vazio-card' }, miniaturaIcone('escola', 'azul'), h('p', {}, 'A lista de jogos de escola aparece depois da primeira leitura.'));
+  if (!jogos.length) return h('div', { class: 'card vazio-card' }, miniaturaIcone(perfil().icone, 'azul'), h('p', {}, perfil().vazioJogos));
   const f = ctx.estado.filtros;
-  const filtro = f.escolaFiltro || 'pequenos';
+  const filtro = f[perfil().filtro] || 'pequenos';
   const subindo = jogos.filter(j => j.tendencia === 'subindo').length;
   const lista = jogos.filter(j => filtro === 'todos' || (filtro === 'pequenos' && ehPequeno(j)) || (filtro === 'parecidos' && ehParecido(j)) || (filtro === 'referencia' && !ehPequeno(j)));
   const nosso = d().jogo?.atual?.jogando;
   return h('div', {},
     h('div', { class: 'card card-escolas-topo' },
-      h('span', { class: 'resumo-icone tom-azul' }, icone('escola', { tamanho: 22 })),
-      h('span', { class: 'atalho-texto' }, h('strong', {}, `${jogos.length} jogos de escola`), h('span', {}, `${jogos.filter(ehPequeno).length} pequenos · ${subindo} subindo${nosso != null ? ` · o nosso tem ${num(nosso)}` : ''}`)),
+      h('span', { class: 'resumo-icone tom-azul' }, icone(perfil().icone, { tamanho: 22 })),
+      h('span', { class: 'atalho-texto' }, h('strong', {}, `${jogos.length} ${perfil().grupo}`), h('span', {}, `${jogos.filter(ehPequeno).length} pequenos · ${subindo} subindo${nosso != null ? ` · o nosso tem ${num(nosso)}` : ''}`)),
       c.atualizadoEm ? chip(haQuanto(c.atualizadoEm), { iconeNome: 'relogio' }) : null),
-    filtrosChips([['pequenos', 'Pequenos', 'alvo'], ['parecidos', 'Parecidos com o nosso', 'escola'], ['referencia', 'Referência', 'trofeu'], ['todos', 'Todos']], filtro, v => { f.escolaFiltro = v; ctx.render(); }, 'Filtro de jogos'),
+    filtrosChips([['pequenos', 'Pequenos', 'alvo'], ['parecidos', 'Parecidos com o nosso', perfil().icone], ['referencia', 'Referência', 'trofeu'], ['todos', 'Todos']], filtro, v => { f[perfil().filtro] = v; ctx.render(); }, 'Filtro de jogos'),
     filtro === 'pequenos' ? h('p', { class: 'dica-linha' }, icone('lampada', { tamanho: 16 }), 'Pequenos têm menos de 20 mil jogando: dá para comparar de perto com o nosso.') : null,
-    lista.length ? h('div', { class: 'grade-escolas' }, lista.map(cardJogoEscola)) : h('div', { class: 'card vazio-card' }, miniaturaIcone('escola', 'cinza'), h('p', {}, 'Nenhum jogo com esse filtro.')));
+    lista.length ? h('div', { class: 'grade-escolas' }, lista.map(cardJogoComparavel)) : h('div', { class: 'card vazio-card' }, miniaturaIcone(perfil().icone, 'cinza'), h('p', {}, 'Nenhum jogo com esse filtro.')));
 }
 
 // ------------------------------------------------------------------ tela
@@ -186,6 +202,6 @@ export function telaPesquisa() {
   const aba = ctx.estado.sub.pesquisa || 'alta';
   const n = (d().discord?.sugestoes || []).length;
   return h('div', { class: 'pagina-pesquisa' },
-    segmentado([['alta', 'Em alta', 'grafico'], ['escolas', 'Jogos de escola', 'escola'], ['discord', `Discord${n ? ` (${n})` : ''}`, 'chat']], aba, v => { ctx.estado.sub.pesquisa = v; ctx.render(); }, { rotulo: 'Seções da pesquisa', classe: 'abas-topo' }),
-    aba === 'discord' ? discord() : aba === 'escolas' ? jogosEscola() : emAlta());
+    segmentado([['alta', 'Em alta', 'grafico'], ['escolas', perfil().tituloJogos, perfil().icone], ['discord', `Discord${n ? ` (${n})` : ''}`, 'chat']], aba, v => { ctx.estado.sub.pesquisa = v; ctx.render(); }, { rotulo: 'Seções da pesquisa', classe: 'abas-topo' }),
+    aba === 'discord' ? discord() : aba === 'escolas' ? jogosComparaveis() : emAlta());
 }

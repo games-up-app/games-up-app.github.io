@@ -512,7 +512,7 @@ function saudacao() {
   const sol = hh >= 6 && hh < 18;
   return h('header', { class: 'boas-vindas' },
     h('div', { class: 'bv-topo' },
-      h('img', { class: 'bv-jogo', src: 'marca/jogo.png', alt: '', width: 44, height: 44, onerror: e => e.target.remove() }),
+      h('img', { class: 'bv-jogo', src: d().jogo?.icone || (ctx.estado.jogoId === 'mandrake-catalogo' ? null : 'marca/jogo.png'), alt: d().jogo?.nome || '', width: 44, height: 44, onerror: e => e.target.remove() }),
       h('span', { class: 'bv-data' }, `${NOMES_DIA[wd]}, ${dataLonga(hoje)}`),
       h('span', { class: 'bv-sol', 'aria-hidden': 'true' }, icone(sol ? 'sol' : 'estrela', { tamanho: 22 }))),
     h('h1', { tabindex: '-1' }, `${oi}, ${nome}`),
