@@ -21,6 +21,7 @@ const REGRAS = {
   'reformulacao-propostas': { nome: 'Reformulação de propostas', idade: 2.5 * HORA, observadora: true },
   'numeros-completos': { nome: 'Números completos', cron: '0 9 * * *' },
   discord: { nome: 'Discord', cron: '0 9 * * *' },
+  'bugs-discord': { nome: 'Canal de bugs do Discord', cron: '40 * * * *', idade: 2.5 * HORA },
   'relatorio-semanal': { nome: 'Relatório semanal', cron: '0 11 * * 6' },
   'relatorio-preliminar': { nome: 'Relatório preliminar', cron: '0 12 * * 0' },
   'diagnostico-segunda': { nome: 'Diagnóstico de segunda', cron: '0 12 * * 1' },

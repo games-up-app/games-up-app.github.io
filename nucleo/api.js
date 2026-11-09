@@ -5,7 +5,7 @@ import { ErroRegra, STATUS, decidirProposta, agendarProposta, fazerHoje, comenta
 import { validarIdeia } from './ideias.js?v=20261026-agenda2';
 import { decidirEtapa } from './revisao-etapas.js?v=20261026-agenda2';
 
-const ARQUIVOS = ['meta', 'metricas', 'ideias', 'andamento', 'analytics', 'jogo', 'concorrentes', 'noticias', 'thumbnails', 'propostas', 'tarefas', 'tendencias', 'discord', 'lancamentos', 'comentarios', 'config', 'saude-agendamentos', 'relatorios/indice', 'executor', 'presenca', 'push/inscricoes', 'push/confirmacoes'];
+const ARQUIVOS = ['meta', 'metricas', 'ideias', 'andamento', 'analytics', 'jogo', 'concorrentes', 'noticias', 'thumbnails', 'propostas', 'tarefas', 'tendencias', 'discord', 'bugs-discord', 'lancamentos', 'comentarios', 'config', 'saude-agendamentos', 'relatorios/indice', 'executor', 'presenca', 'push/inscricoes', 'push/confirmacoes'];
 
 function mes(d) { return d.toISOString().slice(0, 7); }
 

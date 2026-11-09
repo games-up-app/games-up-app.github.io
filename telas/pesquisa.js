@@ -138,6 +138,41 @@ function discord() {
       : h('div', { class: 'card vazio-card' }, miniaturaIcone('chat', 'cinza'), h('p', {}, 'Nenhuma sugestão para mostrar.')));
 }
 
+function bugsDiscord() {
+  const bugs = d()['bugs-discord'] || {};
+  const f = ctx.estado.filtros;
+  const modo = f.bugsFiltro || 'todos';
+  const itens = bugs.itens || [];
+  const doJogo = itens.filter(i => i.relacionada === true);
+  const semJogo = itens.filter(i => !i.jogosIds?.length);
+  const lista = modo === 'jogo' ? doJogo : modo === 'sem-jogo' ? semJogo : itens;
+  const limite = f.bugsLimite || 30;
+  const jogo = i => (i.jogosIds || []).map(id => contextoPesquisa(id).nome).join(' e ') || 'Jogo não identificado';
+  const tipo = i => i.tipo === 'bug' ? 'Relato de bug · a verificar' : 'Comentário';
+  const abrir = i => abrirFolha({ titulo: tipo(i), conteudo: h('div', {},
+    h('p', { class: 'tendencia-texto' }, i.resumo),
+    campo('gameplay', 'Jogo mencionado', jogo(i)), campo('calendario', 'Data', dataBR(i.em)),
+    i.anexos ? campo('imagem', 'Anexos', `${i.anexos} na mensagem original`) : null),
+    rodape: botaoLink(i.link, 'Abrir mensagem no Discord', { classe: 'btn primario grande', iconeNome: 'chat' }) });
+  const status = bugs.acesso ? 'Canal de bugs conectado' : bugs.status === 'parcial' ? 'Acesso parcial ao canal' : 'Leitura do canal indisponível';
+  return h('div', {},
+    h('div', { class: `card linha-status-card ${bugs.acesso ? 'ok' : 'warn'}` },
+      h('span', { class: `resumo-icone tom-${bugs.acesso ? 'verde' : 'amarelo'}` }, icone('chat', { tamanho: 22 })),
+      h('span', { class: 'atalho-texto' }, h('strong', {}, status),
+        h('span', {}, bugs.ultimaLeitura ? `Última leitura ${haQuanto(bugs.ultimaLeitura)}` : 'Aguardando a primeira leitura'))),
+    bugs.detalhe ? h('p', { class: 'dica-linha' }, bugs.detalhe) : null,
+    bugs.link ? botaoLink(bugs.link, 'Abrir canal no Discord', { classe: 'btn', iconeNome: 'chat' }) : null,
+    filtrosChips([['todos', `Todas (${itens.length})`, 'chat'], ['jogo', `${perfil().nome} (${doJogo.length})`, perfil().icone],
+      ['sem-jogo', `Sem jogo (${semJogo.length})`, 'pesquisa']], modo, v => { f.bugsFiltro = v; f.bugsLimite = 30; ctx.render(); }, 'Filtro de relatos de bugs'),
+    lista.length ? h('div', { class: 'lista-cards' }, lista.slice(0, limite).map(i => cardClicavel('card-item', () => abrir(i), `Abrir mensagem: ${textoCurto(i.resumo, 80)}`,
+      miniaturaIcone(i.tipo === 'bug' ? 'alerta' : 'chat', i.tipo === 'bug' ? 'amarelo' : 'roxo', 'mini'),
+      h('div', { class: 'item-texto' }, h('strong', {}, textoCurto(i.resumo, 150)),
+        h('div', { class: 'chips-linha' }, chip(tipo(i), { tom: i.tipo === 'bug' ? 'warn' : 'neutro' }), chip(jogo(i)), i.em ? chip(dataBR(i.em)) : null)),
+      icone('direita', { tamanho: 20, classe: 'item-seta' }))))
+      : h('div', { class: 'card vazio-card' }, miniaturaIcone('alerta', 'cinza'), h('p', {}, 'Nenhuma mensagem para mostrar neste filtro.')),
+    lista.length > limite ? h('button', { class: 'btn largo', type: 'button', onclick: () => { f.bugsLimite = limite + 30; ctx.render(); } }, 'Mostrar mais mensagens') : null);
+}
+
 // ------------------------------------------------------------------ jogos comparáveis
 const ehParecido = j => (typeof j.parecido === 'boolean' ? j.parecido : (perfil().catalogo ? /cat[aá]logo|catalog|avatar|outfit|provador/i : /\b(rp|roleplay|role ?play)\b/i).test(j.nome || ''));
 const ehPequeno = j => j.porte === 'pequeno' || (j.porte == null && Number(j.jogando) < 20000);
@@ -207,6 +242,7 @@ export function telaPesquisa() {
   const aba = ctx.estado.sub.pesquisa || 'alta';
   const n = (d().discord?.sugestoes || []).length;
   return h('div', { class: 'pagina-pesquisa' },
-    segmentado([['alta', 'Em alta', 'grafico'], ['escolas', perfil().tituloJogos, perfil().icone], ['discord', `Discord${n ? ` (${n})` : ''}`, 'chat']], aba, v => { ctx.estado.sub.pesquisa = v; ctx.render(); }, { rotulo: 'Seções da pesquisa', classe: 'abas-topo' }),
-    aba === 'discord' ? discord() : aba === 'escolas' ? jogosComparaveis() : emAlta());
+    segmentado([['alta', 'Em alta', 'grafico'], ['escolas', perfil().tituloJogos, perfil().icone], ['discord', `Discord${n ? ` (${n})` : ''}`, 'chat'],
+      ['bugs', 'Bugs', 'alerta']], aba, v => { ctx.estado.sub.pesquisa = v; ctx.render(); }, { rotulo: 'Seções da pesquisa', classe: 'abas-topo' }),
+    aba === 'bugs' ? bugsDiscord() : aba === 'discord' ? discord() : aba === 'escolas' ? jogosComparaveis() : emAlta());
 }
